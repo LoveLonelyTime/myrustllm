@@ -5,3 +5,4 @@ pub mod slice;
 pub mod autograd;
 pub mod math;
 pub mod interface;
+pub mod literal;

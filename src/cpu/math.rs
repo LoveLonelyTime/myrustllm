@@ -4,10 +4,8 @@ use crate::cpu::shape::Shape;
 use crate::cpu::tensor::{CPUGenericTensor, CPUTensor, Tensor, broadcast};
 
 impl CPUTensor<f32> {
-    
-
-    pub fn sum(&self, dims: Option<&Shape>, keep_dim: bool) {
-
+    pub fn sum(&self, dims: Option<&[usize]>, keep_dim: bool) {
+        
     }
 }
 
@@ -22,7 +20,7 @@ impl std::ops::Add for &CPUTensor<f32> {
         ));
 
         let dims = a.dims();
-        let mut out = CPUTensor::from_shape(&a.shape());
+        let out = CPUTensor::from_shape(&a.shape());
 
         unsafe {
             let a_ptr = a.borrow().as_ptr() as *const libc::c_float;

@@ -1,8 +1,8 @@
 use myrustllm::cpu::shape::Shape;
 use myrustllm::cpu::tensor::CPUTensor;
 use myrustllm::cuda::tensor::CUDATensor;
-use myrustllm::idx;
-use myrustllm::cpu::slice::TensorSlice;
+use myrustllm::{idx};
+use myrustllm::cpu::slice::{Expand, TensorIndex};
 
 fn main() {
     // let tensor1_cpu = CPUTensor::<f32>::from_array([
@@ -15,8 +15,8 @@ fn main() {
     //     [3.0, 4.0]
     // ]).slice(&idx!(.., 1));
 
-    let tensor1_cpu = CPUTensor::<f32>::fill(&Shape::new(vec![1000,1000,100]), 1.0);
-    let tensor2_cpu = CPUTensor::<f32>::fill(&Shape::new(vec![1]), 2.0);
+    //let tensor1_cpu = CPUTensor::<f32>::fill(&Shape::new(vec![1000,1000,100]), 1.0);
+    //let tensor2_cpu = CPUTensor::<f32>::fill(&Shape::new(vec![1]), 2.0);
 
 
     // let mut  tensor1_cuda = CUDATensor::from(&tensor1_cpu);
@@ -25,7 +25,7 @@ fn main() {
     // let res_cuda = -&tensor1_cuda;
     // tensor1_cuda.slice(&idx!(1,3..50,30..50)).copy_from(&tensor2_cuda);
 
-    let res = &tensor1_cpu + &tensor2_cpu;
-
-    println!("{}", res);
+    let tensor = idx!(2..=-3);
+    // let new_tensor = tensor.broadcast_to(&Shape::new(vec![1,2,3])).unwrap();
+    println!("{:?}", tensor);
 }

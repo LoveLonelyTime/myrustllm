@@ -1,6 +1,22 @@
 #include <myrustllm-cpu.h>
 #include "../include/math.h"
 
+void cpu_tensor_copy_f32(
+    const float* a, float* out,
+    const size_t* a_strides, const size_t* out_strides,
+    const size_t* a_shape, const size_t* out_shape,
+    size_t n_a_dims, size_t n_out_dims,
+    size_t n_elements
+) {
+    #pragma omp parallel for
+    for(size_t linear_idx = 0; linear_idx < n_elements; linear_idx++) {
+        size_t a_offset = linear2tensor(linear_idx, a_strides, a_shape, n_a_dims);
+        size_t out_offset = linear2tensor(linear_idx, out_strides, out_shape, n_out_dims);
+
+        out[out_offset] = a[a_offset];
+    }
+}
+
 void cpu_tensor_add_f32(
     const float* a, const float* b, float* out,
     const size_t* a_strides, const size_t* b_strides, const size_t* out_strides,

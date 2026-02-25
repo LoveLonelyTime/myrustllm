@@ -1,21 +1,21 @@
-use crate::cpu::shape;
+use std::usize;
 
 /// Metadata for shape, stride, ...
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Shape(Vec<usize>);
 
 impl Shape {
-    /// Create a new shape
+    /// Create a new shape.
     pub fn new(dims: Vec<usize>) -> Self {
         Shape(dims)
     }
 
-    /// Create a new shape for scalar
+    /// Create a new shape for scalar.
     pub fn scalar() -> Self {
         Shape(Vec::new())
     }
 
-    /// Return the number of elements along the shape
+    /// Return the number of elements along the shape.
     pub fn numel(&self) -> usize {
         if self.is_scalar() {
             1
@@ -24,17 +24,17 @@ impl Shape {
         }
     }
 
-    /// Push a new dim into the shape
+    /// Push a new dim into the shape.
     pub fn push_dim(&mut self, dim: usize) {
         self.0.push(dim);
     }
 
-    /// Extend the shape
+    /// Extend the shape.
     pub fn extend_dim(&mut self, dims: &Shape) {
         self.0.extend(&dims.0);
     }
 
-    /// Return the dimension of the shape
+    /// Return the dimension of the shape.
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -44,17 +44,17 @@ impl Shape {
         self.len() == 0
     }
 
-    /// Return an iter
+    /// Return an iter.
     pub fn iter(&self) -> std::slice::Iter<'_, usize> {
         self.0.iter()
     }
 
-    /// Return a const pointer
+    /// Return a const pointer.
     pub fn as_ptr(&self) -> *const usize {
         self.0.as_ptr()
     }
 
-    /// Return a mutable pointer
+    /// Return a mutable pointer.
     pub fn as_mut_ptr(&mut self) -> *mut usize {
         self.0.as_mut_ptr()
     }
@@ -98,19 +98,19 @@ impl std::fmt::Display for Shape {
     }
 }
 
-/// Create a contiguous stride along the shape
+/// Create a contiguous stride along the shape.
 ///
 /// # Example
-/// 
+///
 /// ```
 /// use myrustllm::cpu::shape::{Shape, create_contiguous_stride};
-/// 
+///
 /// let shape = Shape::new(vec![2, 3, 4]);
 /// let contiguous_stride = create_contiguous_stride(&shape);
 /// assert_eq!(contiguous_stride, Shape::new(vec![12, 4, 1]));
 /// ```
-/// 
-/// For the above example, 1 = 1, 4 = 1 * 4, 12 = 3 * 4
+///
+/// For the above example, 1 = 1, 4 = 1 * 4, 12 = 3 * 4.
 pub fn create_contiguous_stride(shape: &Shape) -> Shape {
     let mut stride = Shape::new(vec![1; shape.len()]);
 

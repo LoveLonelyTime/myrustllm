@@ -17,6 +17,15 @@ extern "C"
 #endif
 
     // ---------- Math ----------
+    // FP32 COPY
+    void cpu_tensor_copy_f32(
+        const float* a, float* out,
+        const size_t* a_strides, const size_t* out_strides,
+        const size_t* a_shape, const size_t* out_shape,
+        size_t n_a_dims, size_t n_out_dims,
+        size_t n_elements
+    );
+
     // FP32 ADD
     __MYRUSTLLM_API__ void cpu_tensor_add_f32(
         const float *a, const float *b, float *out,
@@ -25,6 +34,7 @@ extern "C"
         size_t n_dims,
         size_t n_elements);
 
+    // FP32 ADD_
     __MYRUSTLLM_API__ void cpu_tensor_add_f32_(
         float* a, const float* b,
         const size_t* a_strides, const size_t* b_strides,

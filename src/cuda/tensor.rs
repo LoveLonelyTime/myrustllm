@@ -3,7 +3,7 @@ use std::iter::zip;
 use std::rc::Rc;
 
 use crate::cpu::shape::{Shape, broadcast_shape, create_contiguous_stride};
-use crate::cpu::slice::TensorSlice;
+use crate::cpu::slice::TensorIndex;
 use crate::cpu::tensor::Tensor;
 use crate::cuda::interface;
 use crate::cuda::mem::{CUDAMemory, CUDAType};
@@ -123,7 +123,7 @@ impl<T: CUDAType> CUDATensor<T> {
     /// Create a new slice(view) derived from `&self`
     ///
     /// The returned CPUTensor shares the same memory with `&self`
-    pub fn slice(&self, indices: &[TensorSlice]) -> Self {
+    pub fn slice(&self, indices: &[TensorIndex]) -> Self {
         let mut new_shape = Shape::scalar();
         let mut new_stride = Shape::scalar();
         let mut new_offset = self.offset;
@@ -140,64 +140,65 @@ impl<T: CUDAType> CUDATensor<T> {
             let dim_stride = self.stride[dim];
 
             match index {
-                // Index
-                TensorSlice::Index(i) => {
-                    assert!(
-                        *i < dim_size,
-                        "Index {} out of bounds of dimension {} with size {}.",
-                        i,
-                        dim,
-                        dim_size
-                    );
-                    new_offset += i * dim_stride
-                }
+                // // Index
+                // TensorIndex::Index(i) => {
+                //     assert!(
+                //         *i < dim_size,
+                //         "Index {} out of bounds of dimension {} with size {}.",
+                //         i,
+                //         dim,
+                //         dim_size
+                //     );
+                //     new_offset += i * dim_stride
+                // }
 
-                // Range
-                TensorSlice::Range(range) => {
-                    assert!(
-                        range.start < dim_size && range.end <= dim_size && range.start < range.end,
-                        "Range {:?} out of bounds of dimension {} with size {}.",
-                        range,
-                        dim,
-                        dim_size
-                    );
-                    new_offset += range.start * dim_stride;
-                    new_shape.push_dim(range.end - range.start);
-                    new_stride.push_dim(dim_stride);
-                }
+                // // Range
+                // TensorIndex::Range(range) => {
+                //     assert!(
+                //         range.start < dim_size && range.end <= dim_size && range.start < range.end,
+                //         "Range {:?} out of bounds of dimension {} with size {}.",
+                //         range,
+                //         dim,
+                //         dim_size
+                //     );
+                //     new_offset += range.start * dim_stride;
+                //     new_shape.push_dim(range.end - range.start);
+                //     new_stride.push_dim(dim_stride);
+                // }
 
-                // RangeFrom
-                TensorSlice::RangeFrom(range) => {
-                    assert!(
-                        range.start < dim_size,
-                        "Range {:?} out of bounds of dimension {} with size {}.",
-                        range,
-                        dim,
-                        dim_size
-                    );
-                    new_offset += range.start * dim_stride;
-                    new_shape.push_dim(dim_size - range.start);
-                    new_stride.push_dim(dim_stride);
-                }
+                // // RangeFrom
+                // TensorIndex::RangeFrom(range) => {
+                //     assert!(
+                //         range.start < dim_size,
+                //         "Range {:?} out of bounds of dimension {} with size {}.",
+                //         range,
+                //         dim,
+                //         dim_size
+                //     );
+                //     new_offset += range.start * dim_stride;
+                //     new_shape.push_dim(dim_size - range.start);
+                //     new_stride.push_dim(dim_stride);
+                // }
 
-                // RangeTo
-                TensorSlice::RangeTo(range) => {
-                    assert!(
-                        range.end <= dim_size,
-                        "Range {:?} out of bounds of dimension {} with size {}.",
-                        range,
-                        dim,
-                        dim_size
-                    );
-                    new_shape.push_dim(range.end);
-                    new_stride.push_dim(dim_stride);
-                }
+                // // RangeTo
+                // TensorIndex::RangeTo(range) => {
+                //     assert!(
+                //         range.end <= dim_size,
+                //         "Range {:?} out of bounds of dimension {} with size {}.",
+                //         range,
+                //         dim,
+                //         dim_size
+                //     );
+                //     new_shape.push_dim(range.end);
+                //     new_stride.push_dim(dim_stride);
+                // }
 
-                // RangeFull
-                TensorSlice::RangeFull(_) => {
-                    new_shape.push_dim(dim_size);
-                    new_stride.push_dim(dim_stride);
-                }
+                // // RangeFull
+                // TensorIndex::RangeFull(_) => {
+                //     new_shape.push_dim(dim_size);
+                //     new_stride.push_dim(dim_stride);
+                // }
+                _ => {}
             }
         }
 
