@@ -1,3 +1,5 @@
+use crate::cpu::shape;
+
 /// Metadata for shape, stride, ...
 #[derive(Clone)]
 pub struct Shape(Vec<usize>);
@@ -121,4 +123,32 @@ pub fn create_contiguous_stride(shape: &Shape) -> Shape {
 
         stride
     }
+}
+
+pub fn broadcast_shape(shape_a: &Shape, shape_b: &Shape) -> Option<Shape> {
+    let max_dims = std::cmp::max(shape_a.len(), shape_b.len());
+
+    let mut result_shape_v = Vec::with_capacity(max_dims);
+
+    for i in 0..max_dims {
+        let d_a = if i < shape_a.len() {
+            shape_a[shape_a.len() - 1 - i]
+        } else {
+            1
+        };
+        let d_b = if i < shape_b.len() {
+            shape_b[shape_b.len() - 1 - i]
+        } else {
+            1
+        };
+
+        if d_a != d_b && d_a != 1 && d_b != 1 {
+            return None;
+        }
+
+        result_shape_v.push(std::cmp::max(d_a, d_b));
+    }
+    result_shape_v.reverse();
+
+    return Some(Shape::new(result_shape_v));
 }

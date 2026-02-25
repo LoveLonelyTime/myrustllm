@@ -4,7 +4,7 @@ use std::iter::zip;
 use std::rc::Rc;
 
 use crate::cpu::mem::CPUMemory;
-use crate::cpu::shape::{Shape, create_contiguous_stride};
+use crate::cpu::shape::{Shape, broadcast_shape, create_contiguous_stride};
 use crate::cpu::slice::TensorSlice;
 
 /// Flattenable data
@@ -55,7 +55,7 @@ flattenable_scalar!(u32);
 flattenable_scalar!(u8);
 
 /// Multi-dimension tensor
-pub trait Tensor<T> {
+pub trait Tensor {
     /// Return the shape of `&self`
     fn shape(&self) -> Shape;
 
@@ -68,11 +68,15 @@ pub trait Tensor<T> {
     fn is_scalar(&self) -> bool {
         self.shape().is_scalar()
     }
+
+    // Return the number of elements
+    fn numel(&self) -> usize {
+        self.shape().numel()
+    }
 }
 
 /// Tensor in the CPU memory
 ///
-/// `T` is the inner type
 pub struct CPUTensor<T: Copy> {
     data: Rc<RefCell<CPUMemory<T>>>,
     shape: Shape,
@@ -80,7 +84,7 @@ pub struct CPUTensor<T: Copy> {
     offset: usize,
 }
 
-impl<T: Copy> Tensor<T> for CPUTensor<T> {
+impl<T: Copy> Tensor for CPUTensor<T> {
     fn shape(&self) -> Shape {
         self.shape.clone()
     }
@@ -94,6 +98,16 @@ impl<T: Copy> CPUTensor<T> {
             shape: shape.clone(),
             stride: stride.clone(),
             offset,
+        }
+    }
+
+    /// Create a new CPU tensor with shape `shape`
+    pub fn from_shape(shape: &Shape) -> Self {
+        CPUTensor {
+            data: Rc::new(RefCell::new(CPUMemory::new(shape.numel()))),
+            shape: shape.clone(),
+            stride: create_contiguous_stride(shape),
+            offset: 0,
         }
     }
 
@@ -346,6 +360,49 @@ impl<T: Copy> CPUTensor<T> {
             offset: new_offset,
         }
     }
+
+    pub fn broadcast_to(&self, target_shape: &Shape) -> Option<CPUTensor<T>> {
+        if target_shape.len() < self.dims() {
+            return None;
+        }
+
+        let mut new_stride_v = Vec::with_capacity(target_shape.len());
+
+        let diff = target_shape.len() - self.dims();
+        for _ in 0..diff {
+            new_stride_v.push(0);
+        }
+
+        for i in 0..self.dims() {
+            if self.shape()[i] != 1 && self.shape()[i] != target_shape[i + diff] {
+                return None;
+            }
+
+            if self.shape()[i] == 1 && target_shape[i + diff] != 1 {
+                new_stride_v.push(0);
+            } else {
+                new_stride_v.push(self.stride()[i]);
+            }
+        }
+
+        Some(CPUTensor {
+            data: self.data.clone(),
+            shape: target_shape.clone(),
+            stride: Shape::new(new_stride_v),
+            offset: self.offset,
+        })
+    }
+}
+
+pub fn broadcast<T: Copy, U: Copy>(
+    a: &CPUTensor<T>,
+    b: &CPUTensor<U>,
+) -> Option<(CPUTensor<T>, CPUTensor<U>)> {
+    let target_shape: Shape = broadcast_shape(&a.shape(), &b.shape())?;
+    Some((
+        a.broadcast_to(&target_shape)?,
+        b.broadcast_to(&target_shape)?,
+    ))
 }
 
 fn tensor_fmt_recursive<T: Copy + std::fmt::Display>(
@@ -396,5 +453,82 @@ impl<T: Copy + std::fmt::Display> std::fmt::Display for CPUTensor<T> {
 
         let mut trace = vec![0; self.dims()];
         tensor_fmt_recursive(limit, f, self, trace.as_mut_slice(), 0)
+    }
+}
+
+impl CPUTensor<f32> {
+    pub fn fill_zeros(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 0.0)
+    }
+
+    pub fn fill_ones(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 1.0)
+    }
+}
+
+impl CPUTensor<f64> {
+    pub fn fill_zeros(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 0.0)
+    }
+
+    pub fn fill_ones(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 1.0)
+    }
+}
+
+impl CPUTensor<i32> {
+    pub fn fill_zeros(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 0)
+    }
+
+    pub fn fill_ones(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 0)
+    }
+}
+
+impl CPUTensor<i64> {
+    pub fn fill_zeros(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 0)
+    }
+
+    pub fn fill_ones(shape: &Shape) -> Self {
+        CPUTensor::fill(shape, 0)
+    }
+}
+
+pub enum CPUGenericTensor {
+    F32(CPUTensor<f32>),
+    F64(CPUTensor<f64>),
+    I32(CPUTensor<i32>),
+    I64(CPUTensor<i64>),
+}
+
+impl Tensor for CPUGenericTensor {
+    fn shape(&self) -> Shape {
+        match self {
+            CPUGenericTensor::F32(t) => t.shape(),
+            CPUGenericTensor::F64(t) => t.shape(),
+            CPUGenericTensor::I32(t) => t.shape(),
+            CPUGenericTensor::I64(t) => t.shape(),
+        }
+    }
+}
+
+impl CPUGenericTensor {
+    pub fn like_zeros(tensor: &CPUGenericTensor) -> Self {
+        match tensor {
+            CPUGenericTensor::F32(t) => {
+                CPUGenericTensor::F32(CPUTensor::<f32>::fill_zeros(&t.shape()))
+            }
+            CPUGenericTensor::F64(t) => {
+                CPUGenericTensor::F64(CPUTensor::<f64>::fill_zeros(&t.shape()))
+            }
+            CPUGenericTensor::I32(t) => {
+                CPUGenericTensor::I32(CPUTensor::<i32>::fill_zeros(&t.shape()))
+            }
+            CPUGenericTensor::I64(t) => {
+                CPUGenericTensor::I64(CPUTensor::<i64>::fill_zeros(&t.shape()))
+            }
+        }
     }
 }

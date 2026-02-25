@@ -2,8 +2,10 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::iter::zip;
 use std::rc::Rc;
 
-use crate::cpu::shape::{Shape, create_contiguous_stride};
+use crate::cpu::shape::{Shape, broadcast_shape, create_contiguous_stride};
+use crate::cpu::slice::TensorSlice;
 use crate::cpu::tensor::Tensor;
+use crate::cuda::interface;
 use crate::cuda::mem::{CUDAMemory, CUDAType};
 
 /// Tensor in the CUDA memory
@@ -16,7 +18,7 @@ pub struct CUDATensor<T: CUDAType> {
     offset: usize,
 }
 
-impl<T: CUDAType> Tensor<T> for CUDATensor<T> {
+impl<T: CUDAType> Tensor for CUDATensor<T> {
     fn shape(&self) -> Shape {
         self.shape.clone()
     }
@@ -93,44 +95,132 @@ impl<T: CUDAType> CUDATensor<T> {
             offset: self.offset,
         })
     }
-}
 
-pub fn broadcast_shape<T: CUDAType>(a: &CUDATensor<T>, b: &CUDATensor<T>) -> Option<Shape> {
-    let shape_a = a.shape();
-    let shape_b = b.shape();
+    /// Copy all values from another CUDA tensor
+    pub fn copy_from(&mut self, rhs: &CUDATensor<T>) {
+        let broadcast_rhs = rhs.broadcast_to(&self.shape()).expect(&format!(
+            "Rhs with shape {} cannot be broadcast to target shape {}!",
+            rhs.shape(),
+            self.shape()
+        ));
 
-    let max_dims = std::cmp::max(a.dims(), b.dims());
+        unsafe {
+            let rhs_ptr = broadcast_rhs.borrow().as_ptr() as *const libc::c_float;
+            let self_ptr = self.borrow_mut().as_mut_ptr() as *mut libc::c_float;
 
-    let mut result_shape_v = Vec::with_capacity(max_dims);
-
-    for i in 0..max_dims {
-        let d_a = if i < a.dims() {
-            shape_a[a.dims() - 1 - i]
-        } else {
-            1
+            interface::cuda_tensor_copy_f32(
+                rhs_ptr.add(broadcast_rhs.offset()),
+                self_ptr.add(self.offset()),
+                broadcast_rhs.stride().as_ptr(),
+                self.stride().as_ptr(),
+                self.shape().as_ptr(),
+                self.dims(),
+                self.numel(),
+            );
         };
-        let d_b = if i < b.dims() {
-            shape_b[b.dims() - 1 - i]
-        } else {
-            1
-        };
+    }
 
-        if d_a != d_b && d_a != 1 && d_b != 1 {
-            return None;
+    /// Create a new slice(view) derived from `&self`
+    ///
+    /// The returned CPUTensor shares the same memory with `&self`
+    pub fn slice(&self, indices: &[TensorSlice]) -> Self {
+        let mut new_shape = Shape::scalar();
+        let mut new_stride = Shape::scalar();
+        let mut new_offset = self.offset;
+
+        assert!(
+            indices.len() <= self.dims(),
+            "Too many indices provided. Tensor has {} dimensions but got {} indices.",
+            self.dims(),
+            indices.len()
+        );
+
+        for (dim, index) in indices.iter().enumerate() {
+            let dim_size = self.shape[dim];
+            let dim_stride = self.stride[dim];
+
+            match index {
+                // Index
+                TensorSlice::Index(i) => {
+                    assert!(
+                        *i < dim_size,
+                        "Index {} out of bounds of dimension {} with size {}.",
+                        i,
+                        dim,
+                        dim_size
+                    );
+                    new_offset += i * dim_stride
+                }
+
+                // Range
+                TensorSlice::Range(range) => {
+                    assert!(
+                        range.start < dim_size && range.end <= dim_size && range.start < range.end,
+                        "Range {:?} out of bounds of dimension {} with size {}.",
+                        range,
+                        dim,
+                        dim_size
+                    );
+                    new_offset += range.start * dim_stride;
+                    new_shape.push_dim(range.end - range.start);
+                    new_stride.push_dim(dim_stride);
+                }
+
+                // RangeFrom
+                TensorSlice::RangeFrom(range) => {
+                    assert!(
+                        range.start < dim_size,
+                        "Range {:?} out of bounds of dimension {} with size {}.",
+                        range,
+                        dim,
+                        dim_size
+                    );
+                    new_offset += range.start * dim_stride;
+                    new_shape.push_dim(dim_size - range.start);
+                    new_stride.push_dim(dim_stride);
+                }
+
+                // RangeTo
+                TensorSlice::RangeTo(range) => {
+                    assert!(
+                        range.end <= dim_size,
+                        "Range {:?} out of bounds of dimension {} with size {}.",
+                        range,
+                        dim,
+                        dim_size
+                    );
+                    new_shape.push_dim(range.end);
+                    new_stride.push_dim(dim_stride);
+                }
+
+                // RangeFull
+                TensorSlice::RangeFull(_) => {
+                    new_shape.push_dim(dim_size);
+                    new_stride.push_dim(dim_stride);
+                }
+            }
         }
 
-        result_shape_v.push(std::cmp::max(d_a, d_b));
-    }
-    result_shape_v.reverse();
+        // Handle remained dimensions
+        for dim in indices.len()..self.dims() {
+            new_shape.push_dim(self.shape[dim]);
+            new_stride.push_dim(self.stride[dim]);
+        }
 
-    return Some(Shape::new(result_shape_v));
+        CUDATensor {
+            data: self.data.clone(), // Share
+            shape: new_shape,
+            stride: new_stride,
+            offset: new_offset,
+        }
+    }
 }
 
-pub fn broadcast<T: CUDAType>(
+pub fn broadcast<T: CUDAType, U: CUDAType>(
     a: &CUDATensor<T>,
-    b: &CUDATensor<T>,
-) -> Option<(CUDATensor<T>, CUDATensor<T>)> {
-    let target_shape = broadcast_shape(a, b)?;
+    b: &CUDATensor<U>,
+) -> Option<(CUDATensor<T>, CUDATensor<U>)> {
+    let target_shape = broadcast_shape(&a.shape(), &b.shape())?;
     Some((
         a.broadcast_to(&target_shape)?,
         b.broadcast_to(&target_shape)?,
