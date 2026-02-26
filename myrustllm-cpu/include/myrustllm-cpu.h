@@ -2,6 +2,14 @@
 #define MYRUSTLLM_CPU_H
 
 #include <stdlib.h>
+typedef struct
+{
+    void* data;
+    const size_t* shape;
+    const size_t* stride;
+    size_t dims;
+} CPUTensor;
+
 
 #if defined(_WIN32)
 #define __MYRUSTLLM_API__ __declspec(dlllimport)
@@ -18,30 +26,19 @@ extern "C"
 
     // ---------- Math ----------
     // FP32 COPY
-    void cpu_tensor_copy_f32(
-        const float* a, float* out,
-        const size_t* a_strides, const size_t* out_strides,
-        const size_t* a_shape, const size_t* out_shape,
-        size_t n_a_dims, size_t n_out_dims,
-        size_t n_elements
-    );
+    void cpu_tensor_copy_f32(CPUTensor lhs, CPUTensor rhs);
 
     // FP32 ADD
-    __MYRUSTLLM_API__ void cpu_tensor_add_f32(
-        const float *a, const float *b, float *out,
-        const size_t *a_strides, const size_t *b_strides, const size_t *out_strides,
-        const size_t *shape,
-        size_t n_dims,
-        size_t n_elements);
+    __MYRUSTLLM_API__ void cpu_tensor_add_f32(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
 
     // FP32 ADD_
-    __MYRUSTLLM_API__ void cpu_tensor_add_f32_(
-        float* a, const float* b,
-        const size_t* a_strides, const size_t* b_strides,
-        const size_t* shape,
-        size_t n_dims,
-        size_t n_elements
-    );
+    __MYRUSTLLM_API__ void cpu_tensor_add_f32_(CPUTensor lhs, CPUTensor rhs);
+
+    // FP32 ADD_R
+    __MYRUSTLLM_API__ void cpu_tensor_add_f32_r(
+        const float *a, float *out,
+        const size_t *a_strides, const size_t *b_strides,
+        const size_t *shape);
 
 #ifdef __cplusplus
 }

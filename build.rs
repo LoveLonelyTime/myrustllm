@@ -19,6 +19,7 @@ fn build_myrustllm_cpu() {
         .header("myrustllm-cpu/include/myrustllm-cpu.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_function("cpu_tensor_.*")
+        .allowlist_type("CPUTensor")
         .generate()
         .expect("Unable to generate bindings");
 

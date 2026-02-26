@@ -18,7 +18,7 @@ impl From<&CPUTensor<f32>> for CUDATensor<CUDAF32> {
         unsafe {
             interface::cuda_tensor_copy_from_host(
                 mem.as_mut_ptr(),
-                value.borrow().as_ptr().add(value.offset()) as *const libc::c_void,
+                value.as_ptr() as *const libc::c_void,
                 size * CUDAF32::size(),
             );
         };
@@ -58,7 +58,7 @@ impl From<&CPUTensor<f64>> for CUDATensor<CUDAF64> {
         unsafe {
             interface::cuda_tensor_copy_from_host(
                 mem.as_mut_ptr(),
-                value.borrow().as_ptr().add(value.offset()) as *const libc::c_void,
+                value.as_ptr() as *const libc::c_void,
                 size * CUDAF64::size(),
             );
         };
