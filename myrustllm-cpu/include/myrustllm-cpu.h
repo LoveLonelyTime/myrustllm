@@ -35,10 +35,7 @@ extern "C"
     __MYRUSTLLM_API__ void cpu_tensor_add_f32_(CPUTensor lhs, CPUTensor rhs);
 
     // FP32 ADD_R
-    __MYRUSTLLM_API__ void cpu_tensor_add_f32_r(
-        const float *a, float *out,
-        const size_t *a_strides, const size_t *b_strides,
-        const size_t *shape);
+    __MYRUSTLLM_API__ void cpu_tensor_add_f32_r(CPUTensor lhs, CPUTensor rhs, size_t batch_dims);
 
 #ifdef __cplusplus
 }

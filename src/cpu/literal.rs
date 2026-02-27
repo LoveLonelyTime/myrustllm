@@ -1,3 +1,4 @@
+use crate::cpu::mem::RawData;
 use crate::cpu::shape::Shape;
 
 /// Literal
@@ -26,22 +27,13 @@ impl<T, U: Literal<T>, const N: usize> Literal<T> for [U; N] {
     }
 }
 
-// The implementations for scalar
-macro_rules! literal_scalar {
-    ($t:ty) => {
-        impl Literal<$t> for $t {
-            fn shape(&self) -> Shape {
-                Shape::scalar()
-            }
+// The implementation for raw data
+impl<T: RawData> Literal<T> for T {
+    fn shape(&self) -> Shape {
+        Shape::scalar()
+    }
 
-            fn flatten(&self, out: &mut Vec<$t>) {
-                out.push(*self);
-            }
-        }
-    };
+    fn flatten(&self, out: &mut Vec<T>) {
+        out.push(*self);
+    }
 }
-
-literal_scalar!(f32);
-literal_scalar!(f64);
-literal_scalar!(i32);
-literal_scalar!(i64);

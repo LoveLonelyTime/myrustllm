@@ -6,7 +6,7 @@ use std::{env, vec};
 use crate::cpu::interface;
 use crate::cpu::literal::Literal;
 use crate::cpu::math::{TensorCopy, TensorCopyBase};
-use crate::cpu::mem::CPUMemory;
+use crate::cpu::mem::{CPUMemory, RawData, SharedCPUMemory};
 use crate::cpu::shape::{Shape, broadcast_shape, create_contiguous_stride};
 use crate::cpu::slice::TensorIndex;
 
@@ -32,20 +32,20 @@ pub trait Tensor {
 }
 
 /// Tensor in the CPU memory.
-pub struct CPUTensor<T> {
-    data: Rc<RefCell<CPUMemory<T>>>,
+pub struct CPUTensor<T: RawData> {
+    data: SharedCPUMemory<T>,
     shape: Shape,
     stride: Shape,
     offset: usize,
 }
 
-impl<T> Tensor for CPUTensor<T> {
+impl<T: RawData> Tensor for CPUTensor<T> {
     fn shape(&self) -> Shape {
         self.shape.clone()
     }
 }
 
-impl<T> CPUTensor<T> {
+impl<T: RawData> CPUTensor<T> {
     /// Create a new CPU tensor.
     pub fn new(data: CPUMemory<T>, shape: &Shape, stride: &Shape, offset: usize) -> Self {
         CPUTensor {
@@ -83,28 +83,23 @@ impl<T> CPUTensor<T> {
     pub fn from_literal<U: Literal<T>>(input: U) -> Self {
         let mut data = Vec::new();
         input.flatten(&mut data);
+
         let shape = input.shape();
         let stride = create_contiguous_stride(&shape);
-
-        let mut mem = CPUMemory::<T>::new(shape.numel());
+        let mut mem = CPUMemory::new(shape.numel());
 
         unsafe {
             std::ptr::copy_nonoverlapping(data.as_ptr(), mem.as_mut_ptr(), data.len());
         };
 
-        CPUTensor {
-            data: Rc::new(RefCell::new(mem)),
-            shape,
-            stride,
-            offset: 0,
-        }
+        CPUTensor::new(mem, &shape, &stride, 0)
     }
 
     /// Create a new CPU scalar.
     pub fn scalar(input: T) -> Self {
         let shape = Shape::scalar();
         let stride = create_contiguous_stride(&shape);
-        let mut mem = CPUMemory::<T>::new(1);
+        let mut mem = CPUMemory::new(1);
         unsafe {
             *mem.as_mut_ptr() = input;
         };
@@ -115,22 +110,12 @@ impl<T> CPUTensor<T> {
     /// Return a const ref of inner scalar.
     ///
     /// If the tensor is not a scalar, it will return `None`.
-    pub fn into_scalar(&self) -> Option<&T> {
+    pub fn into_scalar(&self) -> Option<T> {
         if self.is_scalar() {
-            Some(unsafe { self.as_ptr().as_ref().unwrap() })
+            Some(unsafe { *self.data.borrow().as_ptr() })
         } else {
             None
         }
-    }
-
-    /// Return a const pointer of data.
-    pub fn as_ptr(&self) -> *const T {
-        unsafe { self.data.borrow().as_ptr().add(self.offset) }
-    }
-
-    /// Return a mutable pointer of data.
-    pub fn as_mut_ptr(&self) -> *mut T {
-        unsafe { self.data.borrow_mut().as_mut_ptr().add(self.offset) }
     }
 
     /// Return the stride of the tensor.
@@ -662,22 +647,20 @@ impl<T: TensorCopyBase> CPUTensor<T> {
 
         out
     }
-}
 
-/// Wrap `CPUTensor<T>` into an interface struct.
-impl<T> From<&CPUTensor<T>> for interface::CPUTensor {
-    fn from(value: &CPUTensor<T>) -> Self {
+    /// Wrap `CPUTensor<T>` into an interface struct.
+    pub fn into_interface(&self) -> interface::CPUTensor {
         interface::CPUTensor {
-            data: value.as_mut_ptr() as *mut libc::c_void,
-            shape: value.shape.as_ptr(),
-            stride: value.stride.as_ptr(),
-            dims: value.dims(),
+            data: self.data.borrow_mut().as_mut_ptr() as *mut libc::c_void,
+            shape: self.shape.as_ptr(),
+            stride: self.stride.as_ptr(),
+            dims: self.dims(),
         }
     }
 }
 
 /// `Clone` for `CPUTensor<T>` doesn't mean copying data, but creates a view.
-impl<T> Clone for CPUTensor<T> {
+impl<T: RawData> Clone for CPUTensor<T> {
     fn clone(&self) -> Self {
         CPUTensor {
             data: self.data.clone(), // Share
@@ -691,7 +674,10 @@ impl<T> Clone for CPUTensor<T> {
 // ---------- Utils ----------
 
 /// Try broadcast two cpu tensors mutually.
-pub fn broadcast<T, U>(a: &CPUTensor<T>, b: &CPUTensor<U>) -> Option<(CPUTensor<T>, CPUTensor<U>)> {
+pub fn broadcast<T: RawData, U: RawData>(
+    a: &CPUTensor<T>,
+    b: &CPUTensor<U>,
+) -> Option<(CPUTensor<T>, CPUTensor<U>)> {
     let target_shape: Shape = broadcast_shape(&a.shape(), &b.shape())?;
     Some((
         a.broadcast_to(&target_shape)?,
@@ -700,7 +686,7 @@ pub fn broadcast<T, U>(a: &CPUTensor<T>, b: &CPUTensor<U>) -> Option<(CPUTensor<
 }
 
 // This can let users use `println!` for CPUTensor
-impl<T: std::fmt::Display> std::fmt::Display for CPUTensor<T> {
+impl<T: RawData + std::fmt::Display> std::fmt::Display for CPUTensor<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let limit = env::var("MYRUSTLLM_DISPLAY_LIMIT")
             .ok()
@@ -709,7 +695,7 @@ impl<T: std::fmt::Display> std::fmt::Display for CPUTensor<T> {
 
         let mut trace = vec![0; self.dims()];
 
-        fn _fmt_recursive<T: std::fmt::Display>(
+        fn _fmt_recursive<T: RawData + std::fmt::Display>(
             limit: usize,
             f: &mut std::fmt::Formatter<'_>,
             tensor: &CPUTensor<T>,
@@ -763,42 +749,3 @@ impl CPUTensor<f32> {
         CPUTensor::fill(shape, 1.0)
     }
 }
-
-// /// CPUGenericTensor
-// /// Compared to `CPUTensor<T>`, the data type of `CPUGenericTensor` is dispatched dynamically.
-// pub enum CPUGenericTensor {
-//     F32(CPUTensor<f32>),
-//     F64(CPUTensor<f64>),
-//     I32(CPUTensor<i32>),
-//     I64(CPUTensor<i64>),
-// }
-
-// impl Tensor for CPUGenericTensor {
-//     fn shape(&self) -> Shape {
-//         match self {
-//             CPUGenericTensor::F32(t) => t.shape(),
-//             CPUGenericTensor::F64(t) => t.shape(),
-//             CPUGenericTensor::I32(t) => t.shape(),
-//             CPUGenericTensor::I64(t) => t.shape(),
-//         }
-//     }
-// }
-
-// impl CPUGenericTensor {
-//     pub fn like_zeros(tensor: &CPUGenericTensor) -> Self {
-//         match tensor {
-//             CPUGenericTensor::F32(t) => {
-//                 CPUGenericTensor::F32(CPUTensor::<f32>::fill_zeros(&t.shape()))
-//             }
-//             CPUGenericTensor::F64(t) => {
-//                 CPUGenericTensor::F64(CPUTensor::<f64>::fill_zeros(&t.shape()))
-//             }
-//             CPUGenericTensor::I32(t) => {
-//                 CPUGenericTensor::I32(CPUTensor::<i32>::fill_zeros(&t.shape()))
-//             }
-//             CPUGenericTensor::I64(t) => {
-//                 CPUGenericTensor::I64(CPUTensor::<i64>::fill_zeros(&t.shape()))
-//             }
-//         }
-//     }
-// }
