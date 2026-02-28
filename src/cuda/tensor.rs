@@ -2,9 +2,9 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::iter::zip;
 use std::rc::Rc;
 
-use crate::cpu::shape::{Shape, broadcast_shape, create_contiguous_stride};
+use crate::common::{Device, Shape};
 use crate::cpu::slice::TensorIndex;
-use crate::cpu::tensor::Tensor;
+use crate::common::Tensor;
 use crate::cuda::interface;
 use crate::cuda::mem::{CUDAMemory, CUDAType};
 
@@ -22,6 +22,15 @@ impl<T: CUDAType> Tensor for CUDATensor<T> {
     fn shape(&self) -> Shape {
         self.shape.clone()
     }
+    
+    fn device(&self) -> crate::common::Device {
+        Device::new("cuda", 0)
+    }
+    
+    fn dtype(&self) -> crate::common::DType {
+        todo!()
+    }
+    
 }
 
 impl<T: CUDAType> CUDATensor<T> {
@@ -38,7 +47,7 @@ impl<T: CUDAType> CUDATensor<T> {
         CUDATensor {
             data: Rc::new(RefCell::new(CUDAMemory::new(shape.numel()))),
             shape: shape.clone(),
-            stride: create_contiguous_stride(shape),
+            stride: Shape::create_contiguous_stride(shape),
             offset: 0,
         }
     }
@@ -221,7 +230,7 @@ pub fn broadcast<T: CUDAType, U: CUDAType>(
     a: &CUDATensor<T>,
     b: &CUDATensor<U>,
 ) -> Option<(CUDATensor<T>, CUDATensor<U>)> {
-    let target_shape = broadcast_shape(&a.shape(), &b.shape())?;
+    let target_shape = Shape::broadcast_shape(&a.shape(), &b.shape())?;
     Some((
         a.broadcast_to(&target_shape)?,
         b.broadcast_to(&target_shape)?,

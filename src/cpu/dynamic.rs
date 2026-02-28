@@ -1,5 +1,4 @@
-use crate::cpu::shape::Shape;
-use crate::cpu::tensor::{CPUTensor, Tensor};
+use crate::{common::{Shape, device::{self, Device}, dtype::DType, tensor::Tensor}, cpu::tensor::CPUTensor};
 
 /// CPUGenericTensor
 /// Compared to `CPUTensor<T>`, the data type of `CPUGenericTensor` is dispatched dynamically.
@@ -17,6 +16,24 @@ impl Tensor for CPUGenericTensor {
             CPUGenericTensor::F64(t) => t.shape(),
             CPUGenericTensor::I32(t) => t.shape(),
             CPUGenericTensor::I64(t) => t.shape(),
+        }
+    }
+
+    fn device(&self) -> Device {
+        match self {
+            CPUGenericTensor::F32(t) => t.device(),
+            CPUGenericTensor::F64(t) => t.device(),
+            CPUGenericTensor::I32(t) => t.device(),
+            CPUGenericTensor::I64(t) => t.device(),
+        }
+    }
+
+    fn dtype(&self) -> DType {
+        match self {
+            CPUGenericTensor::F32(t) => t.dtype(),
+            CPUGenericTensor::F64(t) => t.dtype(),
+            CPUGenericTensor::I32(t) => t.dtype(),
+            CPUGenericTensor::I64(t) => t.dtype(),
         }
     }
 }

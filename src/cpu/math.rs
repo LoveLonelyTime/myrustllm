@@ -1,19 +1,15 @@
-use std::process::Output;
-
-use crate::cpu::autograd::{CPUGraphNode, CPUGraphNodeBase, CPUOpGrad};
+use crate::common::Shape;
+use crate::common::math::{TensorAddReduce, TensorCopy};
 use crate::cpu::dynamic::CPUGenericTensor;
 use crate::cpu::interface;
 use crate::cpu::mem::RawData;
-use crate::cpu::shape::Shape;
-use crate::cpu::tensor::{CPUTensor, Tensor, broadcast};
+use crate::cpu::tensor::{CPUTensor, broadcast};
+use crate::common::Tensor;
 
 pub trait TensorCopyBase<Rhs: RawData = Self>: RawData {
     fn copy_from(lhs: &mut CPUTensor<Self>, rhs: &CPUTensor<Rhs>);
 }
 
-pub trait TensorCopy<Rhs = Self> {
-    fn copy_from(&mut self, rhs: Rhs);
-}
 
 impl<T: TensorCopyBase<Rhs>, Rhs: RawData> TensorCopy<&CPUTensor<Rhs>> for CPUTensor<T> {
     fn copy_from(&mut self, rhs: &CPUTensor<Rhs>) {
@@ -163,10 +159,6 @@ impl TensorAddReduceBase for f32 {
     }
 }
 
-pub trait TensorAddReduce{
-    type Output;
-    fn add_reduce(self, dims: Option<&[usize]>, keep_dim: bool) -> Self::Output;
-}
 
 impl <T: RawData + TensorAddReduceBase> TensorAddReduce for &CPUTensor<T> {
     type Output = CPUTensor<T::Output>;
@@ -208,77 +200,77 @@ impl TensorAddReduce for &CPUGenericTensor {
 }
 
 
-pub struct AddGrad {
-    a_shape: Option<Shape>,
-    b_shape: Option<Shape>,
-}
+// pub struct AddGrad {
+//     a_shape: Option<Shape>,
+//     b_shape: Option<Shape>,
+// }
 
-impl AddGrad {
-    pub fn reduce_grad(grad: &CPUGenericTensor, target_shape: &Shape) -> CPUGenericTensor {
-        let mut reduce_dims = Vec::new();
-        let diff = grad.dims() - target_shape.len();
+// impl AddGrad {
+//     pub fn reduce_grad(grad: &CPUGenericTensor, target_shape: &Shape) -> CPUGenericTensor {
+//         let mut reduce_dims = Vec::new();
+//         let diff = grad.dims() - target_shape.len();
 
-        for dim in 0..diff {
-            reduce_dims.push(dim);
-        }
+//         for dim in 0..diff {
+//             reduce_dims.push(dim);
+//         }
 
-        let grad = grad.add_reduce(Some(&reduce_dims), false);
-        reduce_dims.clear();
+//         let grad = grad.add_reduce(Some(&reduce_dims), false);
+//         reduce_dims.clear();
 
-        for dim in 0..target_shape.len(){
-            if target_shape[dim] == 1 && grad.shape()[dim] != 1 {
-                reduce_dims.push(dim);
-            }
-        }
+//         for dim in 0..target_shape.len(){
+//             if target_shape[dim] == 1 && grad.shape()[dim] != 1 {
+//                 reduce_dims.push(dim);
+//             }
+//         }
 
-        grad.add_reduce(Some(&reduce_dims), true)
-    }
-}
+//         grad.add_reduce(Some(&reduce_dims), true)
+//     }
+// }
 
-impl CPUOpGrad for AddGrad {
-    fn forward(&mut self, inputs: &[CPUGenericTensor]) -> CPUGenericTensor {
-        assert_eq!(
-            inputs.len(),
-            2,
-            "AddGrad requires two operands, but got {}.",
-            inputs.len()
-        );
+// impl CPUOpGrad for AddGrad {
+//     fn forward(&mut self, inputs: &[CPUGenericTensor]) -> CPUGenericTensor {
+//         assert_eq!(
+//             inputs.len(),
+//             2,
+//             "AddGrad requires two operands, but got {}.",
+//             inputs.len()
+//         );
 
-        self.a_shape = Some(inputs[0].shape());
-        self.b_shape = Some(inputs[1].shape());
-        &inputs[0] + &inputs[1]
-    }
+//         self.a_shape = Some(inputs[0].shape());
+//         self.b_shape = Some(inputs[1].shape());
+//         &inputs[0] + &inputs[1]
+//     }
 
-    fn backward(&mut self, grad_inputs: &CPUGenericTensor) -> Vec<CPUGenericTensor> {
-        let a_shape = self
-            .a_shape
-            .take()
-            .expect("AddGrad forward hasn't been called.");
-        let b_shape = self
-            .b_shape
-            .take()
-            .expect("AddGrad forward hasn't been called.");
+//     fn backward(&mut self, grad_inputs: &CPUGenericTensor) -> Vec<CPUGenericTensor> {
+//         let a_shape = self
+//             .a_shape
+//             .take()
+//             .expect("AddGrad forward hasn't been called.");
+//         let b_shape = self
+//             .b_shape
+//             .take()
+//             .expect("AddGrad forward hasn't been called.");
 
-        return vec![
-            AddGrad::reduce_grad(grad_inputs, &a_shape),
-            AddGrad::reduce_grad(grad_inputs, &b_shape),
-        ];
-    }
-}
+//         return vec![
+//             AddGrad::reduce_grad(grad_inputs, &a_shape),
+//             AddGrad::reduce_grad(grad_inputs, &b_shape),
+//         ];
+//     }
+// }
 
-impl std::ops::Add for &CPUGraphNode {
-    type Output = CPUGraphNode;
+// impl std::ops::Add for &CPUGraphNode {
+//     type Output = CPUGraphNode;
 
-    fn add(self, rhs: &CPUGraphNode) -> Self::Output {
-        let mut add_grad = AddGrad {
-            a_shape: None,
-            b_shape: None
-        };
-        let a = self.borrow().tensor.clone();
-        let b = rhs.borrow().tensor.clone();
-        let res = add_grad.forward(&[a, b]);
-        CPUGraphNode::new(CPUGraphNodeBase::new(res, vec![self.clone(), rhs.clone()], Some(Box::new(add_grad)), Some(Box::new(|t,g| { 
-            println!("Update")
-        }) )))
-    }
-}
+//     fn add(self, rhs: &CPUGraphNode) -> Self::Output {
+//         let mut add_grad = AddGrad {
+//             a_shape: None,
+//             b_shape: None
+//         };
+//         let a = self.borrow().tensor.clone();
+//         let b = rhs.borrow().tensor.clone();
+//         let res = add_grad.forward(&[a, b]);
+//         CPUGraphNode::new(CPUGraphNodeBase::new(res, vec![self.clone(), rhs.clone()], Some(Box::new(add_grad)), Some(Box::new(|t,g| { 
+//             println!("Update")
+//         }) )))
+//     }
+// }

@@ -2,12 +2,22 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 /// If `T` implement `RawData`, `T` means that it is non-lifetime and can be copied.
-pub trait RawData: Copy {}
+pub trait RawData: Copy {
+    fn name() -> &'static str;
+}
 
-impl RawData for f32 {}
-impl RawData for f64 {}
-impl RawData for i32 {}
-impl RawData for i64 {}
+impl RawData for f32 {
+    fn name() -> &'static str { "f32" }
+}
+impl RawData for f64 {
+    fn name() -> &'static str { "f64" }
+}
+impl RawData for i32 {
+    fn name() -> &'static str { "i32" }
+}
+impl RawData for i64 {
+    fn name() -> &'static str { "i64" }
+}
 
 /// Tensor's representation in CPU memory.
 pub struct CPUMemory<T: RawData> {

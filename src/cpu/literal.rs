@@ -1,5 +1,5 @@
 use crate::cpu::mem::RawData;
-use crate::cpu::shape::Shape;
+use crate::common::Shape;
 
 /// Literal
 pub trait Literal<T> {

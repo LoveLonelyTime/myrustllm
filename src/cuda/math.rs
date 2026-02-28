@@ -1,4 +1,4 @@
-use crate::cpu::tensor::Tensor;
+use crate::common::Tensor;
 use crate::cuda::interface;
 use crate::cuda::mem::CUDAF32;
 use crate::cuda::tensor::{CUDATensor, broadcast};

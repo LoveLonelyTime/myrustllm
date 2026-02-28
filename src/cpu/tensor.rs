@@ -3,33 +3,16 @@ use std::iter::zip;
 use std::rc::Rc;
 use std::{env, vec};
 
+use crate::common::Shape;
+use crate::common::device::Device;
+use crate::common::dtype::DType;
+use crate::common::tensor::Tensor;
 use crate::cpu::interface;
 use crate::cpu::literal::Literal;
-use crate::cpu::math::{TensorCopy, TensorCopyBase};
+use crate::cpu::math::TensorCopyBase;
 use crate::cpu::mem::{CPUMemory, RawData, SharedCPUMemory};
-use crate::cpu::shape::{Shape, broadcast_shape, create_contiguous_stride};
 use crate::cpu::slice::TensorIndex;
-
-/// Multi-dimension tensor.
-pub trait Tensor {
-    /// Return the shape of `&self`.
-    fn shape(&self) -> Shape;
-
-    /// Return the dimension of `&self`.
-    fn dims(&self) -> usize {
-        self.shape().len()
-    }
-
-    /// Is `&self` a scalar?
-    fn is_scalar(&self) -> bool {
-        self.shape().is_scalar()
-    }
-
-    // Return the number of elements.
-    fn numel(&self) -> usize {
-        self.shape().numel()
-    }
-}
+use crate::common::math::TensorCopy;
 
 /// Tensor in the CPU memory.
 pub struct CPUTensor<T: RawData> {
@@ -42,6 +25,14 @@ pub struct CPUTensor<T: RawData> {
 impl<T: RawData> Tensor for CPUTensor<T> {
     fn shape(&self) -> Shape {
         self.shape.clone()
+    }
+
+    fn device(&self) -> Device {
+        Device::new("cpu", 0)
+    }
+
+    fn dtype(&self) -> DType {
+        DType::new(T::name())
     }
 }
 
@@ -63,7 +54,7 @@ impl<T: RawData> CPUTensor<T> {
         CPUTensor::new(
             CPUMemory::new(shape.numel()),
             shape,
-            &create_contiguous_stride(&shape),
+            &Shape::create_contiguous_stride(&shape),
             0,
         )
     }
@@ -85,7 +76,7 @@ impl<T: RawData> CPUTensor<T> {
         input.flatten(&mut data);
 
         let shape = input.shape();
-        let stride = create_contiguous_stride(&shape);
+        let stride = Shape::create_contiguous_stride(&shape);
         let mut mem = CPUMemory::new(shape.numel());
 
         unsafe {
@@ -98,7 +89,7 @@ impl<T: RawData> CPUTensor<T> {
     /// Create a new CPU scalar.
     pub fn scalar(input: T) -> Self {
         let shape = Shape::scalar();
-        let stride = create_contiguous_stride(&shape);
+        let stride = Shape::create_contiguous_stride(&shape);
         let mut mem = CPUMemory::new(1);
         unsafe {
             *mem.as_mut_ptr() = input;
@@ -678,7 +669,7 @@ pub fn broadcast<T: RawData, U: RawData>(
     a: &CPUTensor<T>,
     b: &CPUTensor<U>,
 ) -> Option<(CPUTensor<T>, CPUTensor<U>)> {
-    let target_shape: Shape = broadcast_shape(&a.shape(), &b.shape())?;
+    let target_shape: Shape = Shape::broadcast_shape(&a.shape(), &b.shape())?;
     Some((
         a.broadcast_to(&target_shape)?,
         b.broadcast_to(&target_shape)?,
