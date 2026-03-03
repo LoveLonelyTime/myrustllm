@@ -10,6 +10,18 @@ pub enum GenericTensor {
     GPUTensor(GPUGenericTensor)
 }
 
+impl From<CPUGenericTensor> for GenericTensor {
+    fn from(value: CPUGenericTensor) -> Self {
+        GenericTensor::CPUTensor(value)
+    }
+}
+
+impl From<GPUGenericTensor> for GenericTensor {
+    fn from(value: GPUGenericTensor) -> Self {
+        GenericTensor::GPUTensor(value)
+    }
+}
+
 impl Tensor for GenericTensor {
     fn shape(&self) -> Shape {
         match self {

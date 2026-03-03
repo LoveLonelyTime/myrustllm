@@ -55,6 +55,12 @@ impl From<CPUTensor<f32>> for CPUGenericTensor {
     }
 }
 
+impl From<CPUTensor<f64>> for CPUGenericTensor {
+    fn from(value: CPUTensor<f64>) -> Self {
+        CPUGenericTensor::F64(value)
+    }
+}
+
 impl CPUGenericTensor {
     pub fn like_zeros(tensor: &CPUGenericTensor) -> Self {
         match tensor {
