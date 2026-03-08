@@ -26,3 +26,6 @@ pub trait Tensor {
         self.shape().numel()
     }
 }
+
+/// The meta data of tensor: (Shape, DType, Device).
+pub type TensorMeta = (Shape, DType, Device);

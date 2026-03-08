@@ -6,15 +6,16 @@ use std::{env, vec};
 use crate::common::Shape;
 use crate::common::device::Device;
 use crate::common::dtype::DType;
+use crate::common::math::TensorCopy;
 use crate::common::tensor::Tensor;
 use crate::cpu::interface;
 use crate::cpu::literal::Literal;
 use crate::cpu::math::TensorCopyBase;
 use crate::cpu::mem::{CPUMemory, RawData, SharedCPUMemory};
 use crate::cpu::slice::TensorIndex;
-use crate::common::math::TensorCopy;
 
 /// Tensor in the CPU memory.
+#[derive(Clone)]
 pub struct CPUTensor<T: RawData> {
     data: SharedCPUMemory<T>,
     shape: Shape,
@@ -28,11 +29,11 @@ impl<T: RawData> Tensor for CPUTensor<T> {
     }
 
     fn device(&self) -> Device {
-        Device::new("cpu", 0)
+        Device::CPU
     }
 
     fn dtype(&self) -> DType {
-        DType::new(T::name())
+        T::dtype()
     }
 }
 
@@ -54,7 +55,7 @@ impl<T: RawData> CPUTensor<T> {
         CPUTensor::new(
             CPUMemory::new(shape.numel()),
             shape,
-            &Shape::create_contiguous_stride(&shape),
+            &Shape::create_contiguous_stride(shape),
             0,
         )
     }
@@ -103,7 +104,7 @@ impl<T: RawData> CPUTensor<T> {
     /// If the tensor is not a scalar, it will return `None`.
     pub fn into_scalar(&self) -> Option<T> {
         if self.is_scalar() {
-            Some(unsafe { *self.data.borrow().as_ptr() })
+            Some(unsafe { *self.data.borrow().as_ptr().add(self.offset) })
         } else {
             None
         }
@@ -353,8 +354,8 @@ impl<T: RawData> CPUTensor<T> {
 
         CPUTensor {
             data: self.data.clone(), // Share
-            shape: Shape::new(new_shape_v),
-            stride: Shape::new(new_stride_v),
+            shape: new_shape_v.into(),
+            stride: new_stride_v.into(),
             offset: new_offset,
         }
     }
@@ -401,7 +402,7 @@ impl<T: RawData> CPUTensor<T> {
         Some(CPUTensor {
             data: self.data.clone(), // Share
             shape: target_shape.clone(),
-            stride: Shape::new(new_stride_v),
+            stride: new_stride_v.into(),
             offset: self.offset,
         })
     }
@@ -438,7 +439,7 @@ impl<T: RawData> CPUTensor<T> {
     /// assert_eq!(viewed_tensor.shape(), Shape::new(vec![4, 5]));
     /// ```
     pub fn view(&self, new_shape: &Shape) -> Option<Self> {
-        let mut new_shape = new_shape.clone();
+        let mut new_shape_v: Vec<usize> = new_shape.as_ref().into();
 
         // Check inferred dim
         let mut inferred_dim = None;
@@ -460,8 +461,8 @@ impl<T: RawData> CPUTensor<T> {
                 return None;
             }
 
-            new_shape[i] = self.shape().numel() / known_size;
-            known_size *= new_shape[i];
+            new_shape_v[i] = self.shape().numel() / known_size;
+            known_size *= new_shape_v[i];
         }
 
         if self.shape().numel() != known_size {
@@ -499,9 +500,9 @@ impl<T: RawData> CPUTensor<T> {
         merged_stride_v.reverse();
 
         // Split
-        let mut new_stride = Shape::new(vec![0; new_shape.len()]);
+        let mut new_stride_v = vec![0; new_shape_v.len()];
         let mut block_i = merged_shape_v.len();
-        let mut new_i = new_shape.len();
+        let mut new_i = new_shape_v.len();
 
         while block_i > 0 {
             let block_dim = merged_shape_v[block_i - 1];
@@ -511,7 +512,7 @@ impl<T: RawData> CPUTensor<T> {
             let mut acc = 1;
             let mut dims = Vec::new();
             while new_i > 0 && acc <= block_dim {
-                acc *= new_shape[new_i - 1];
+                acc *= new_shape_v[new_i - 1];
                 dims.push(new_i - 1);
                 new_i -= 1;
             }
@@ -522,8 +523,8 @@ impl<T: RawData> CPUTensor<T> {
 
             let mut running_stride = block_stride;
             for dim in dims {
-                new_stride[dim] = running_stride;
-                running_stride *= new_shape[dim];
+                new_stride_v[dim] = running_stride;
+                running_stride *= new_shape_v[dim];
             }
         }
 
@@ -533,8 +534,8 @@ impl<T: RawData> CPUTensor<T> {
 
         Some(CPUTensor {
             data: self.data.clone(), // Share
-            shape: new_shape,
-            stride: new_stride,
+            shape: new_shape_v.into(),
+            stride: new_stride_v.into(),
             offset: self.offset(),
         })
     }
@@ -564,17 +565,17 @@ impl<T: RawData> CPUTensor<T> {
         assert!(checklist.iter().all(|&x| x), "Invalid dims: {:?}.", dims);
 
         // Permute
-        let mut new_shape = Shape::new(vec![0; self.dims()]);
-        let mut new_stride = Shape::new(vec![0; self.dims()]);
+        let mut new_shape_v = vec![0; self.dims()];
+        let mut new_stride_v = vec![0; self.dims()];
         for (new_i, &i) in dims.iter().enumerate() {
-            new_shape[new_i] = self.shape()[i];
-            new_stride[new_i] = self.stride()[i];
+            new_shape_v[new_i] = self.shape()[i];
+            new_stride_v[new_i] = self.stride()[i];
         }
 
         CPUTensor {
             data: self.data.clone(), // Share
-            shape: new_shape,
-            stride: new_stride,
+            shape: new_shape_v.into(),
+            stride: new_stride_v.into(),
             offset: self.offset,
         }
     }
@@ -597,12 +598,12 @@ impl<T: TensorCopyBase> CPUTensor<T> {
             return t;
         }
 
-        let mut new_shape = new_shape.clone();
+        let mut new_shape_v: Vec<usize> = new_shape.as_ref().into();
 
         // Check inferred dim
         let mut inferred_dim = None;
         let mut known_size = 1;
-        for (i, &dim) in new_shape.iter().enumerate() {
+        for (i, &dim) in new_shape_v.iter().enumerate() {
             if dim == 0 {
                 assert!(
                     inferred_dim.is_none(),
@@ -621,8 +622,8 @@ impl<T: TensorCopyBase> CPUTensor<T> {
                 "Cannot infer the auto-inferred dim."
             );
 
-            new_shape[i] = self.shape().numel() / known_size;
-            known_size *= new_shape[i];
+            new_shape_v[i] = self.shape().numel() / known_size;
+            known_size *= new_shape_v[i];
         }
 
         assert!(
@@ -632,8 +633,8 @@ impl<T: TensorCopyBase> CPUTensor<T> {
             self.shape().numel()
         );
 
-        // Cpoy
-        let mut out = CPUTensor::from_shape(&new_shape);
+        // Copy
+        let mut out = CPUTensor::from_shape(&new_shape_v.into());
         out.copy_from(self);
 
         out
@@ -642,26 +643,15 @@ impl<T: TensorCopyBase> CPUTensor<T> {
     /// Wrap `CPUTensor<T>` into an interface struct.
     pub fn into_interface(&self) -> interface::CPUTensor {
         interface::CPUTensor {
-            data: self.data.borrow_mut().as_mut_ptr() as *mut libc::c_void,
+            data: unsafe {
+                self.data.borrow_mut().as_mut_ptr().add(self.offset) as *mut libc::c_void
+            },
             shape: self.shape.as_ptr(),
             stride: self.stride.as_ptr(),
             dims: self.dims(),
         }
     }
 }
-
-/// `Clone` for `CPUTensor<T>` doesn't mean copying data, but creates a view.
-impl<T: RawData> Clone for CPUTensor<T> {
-    fn clone(&self) -> Self {
-        CPUTensor {
-            data: self.data.clone(), // Share
-            shape: self.shape(),
-            stride: self.stride(),
-            offset: self.offset,
-        }
-    }
-}
-
 // ---------- Utils ----------
 
 /// Try broadcast two cpu tensors mutually.
@@ -677,7 +667,7 @@ pub fn broadcast<T: RawData, U: RawData>(
 }
 
 // This can let users use `println!` for CPUTensor
-impl<T: RawData + std::fmt::Display> std::fmt::Display for CPUTensor<T> {
+impl<T: RawData + std::fmt::Debug> std::fmt::Debug for CPUTensor<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let limit = env::var("MYRUSTLLM_DISPLAY_LIMIT")
             .ok()
@@ -686,7 +676,7 @@ impl<T: RawData + std::fmt::Display> std::fmt::Display for CPUTensor<T> {
 
         let mut trace = vec![0; self.dims()];
 
-        fn _fmt_recursive<T: RawData + std::fmt::Display>(
+        fn _fmt_recursive<T: RawData + std::fmt::Debug>(
             limit: usize,
             f: &mut std::fmt::Formatter<'_>,
             tensor: &CPUTensor<T>,
@@ -696,7 +686,7 @@ impl<T: RawData + std::fmt::Display> std::fmt::Display for CPUTensor<T> {
             if dim == tensor.dims() {
                 let indices: Vec<TensorIndex> =
                     trace.iter().map(|&i| TensorIndex::Index(i)).collect();
-                return write!(f, "{}", tensor.slice(&indices).into_scalar().unwrap());
+                return write!(f, "{:?}", tensor.slice(&indices).into_scalar().unwrap());
             }
 
             write!(f, "[")?;

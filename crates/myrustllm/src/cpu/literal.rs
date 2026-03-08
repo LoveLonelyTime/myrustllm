@@ -13,11 +13,11 @@ pub trait Literal<T> {
 // The recursive implementation for array
 impl<T, U: Literal<T>, const N: usize> Literal<T> for [U; N] {
     fn shape(&self) -> Shape {
-        let mut shape = Shape::new(vec![N]);
+        let mut shape_v = vec![N];
         if N > 0 {
-            shape.extend_dim(&self[0].shape());
+            shape_v.extend(self[0].shape().iter());
         }
-        shape
+        shape_v.into()
     }
 
     fn flatten(&self, out: &mut Vec<T>) {

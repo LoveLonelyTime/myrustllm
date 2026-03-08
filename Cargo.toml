@@ -1,12 +1,6 @@
-[package]
-name = "myrustllm"
-version = "0.1.0"
-edition = "2024"
-build = "build.rs"
-
-[dependencies]
-libc = "0.2"
-
-[build-dependencies]
-cmake = "0.1"
-bindgen = "0.72"
+[workspace]
+members = [
+    "crates/myrustllm",
+    "crates/myrustllm-derive",
+]
+resolver = "3"

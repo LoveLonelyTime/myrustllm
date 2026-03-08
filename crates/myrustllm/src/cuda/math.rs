@@ -7,7 +7,7 @@ impl std::ops::Add for &CUDATensor<CUDAF32> {
     type Output = CUDATensor<CUDAF32>;
     fn add(self, rhs: Self) -> Self::Output {
         let (a, b) = broadcast(self, rhs).expect(&format!(
-            "Two tensors with shapes ({}, {}) cannot be broadcast.",
+            "Two tensors with shapes ({:?}, {:?}) cannot be broadcast.",
             self.shape(),
             rhs.shape()
         ));
@@ -40,7 +40,7 @@ impl std::ops::Sub for &CUDATensor<CUDAF32> {
     type Output = CUDATensor<CUDAF32>;
     fn sub(self, rhs: Self) -> Self::Output {
         let (a, b) = broadcast(self, rhs).expect(&format!(
-            "Two tensors with shapes ({}, {}) cannot be broadcast.",
+            "Two tensors with shapes ({:?}, {:?}) cannot be broadcast.",
             self.shape(),
             rhs.shape()
         ));
@@ -73,7 +73,7 @@ impl std::ops::Mul for &CUDATensor<CUDAF32> {
     type Output = CUDATensor<CUDAF32>;
     fn mul(self, rhs: Self) -> Self::Output {
         let (a, b) = broadcast(self, rhs).expect(&format!(
-            "Two tensors with shapes ({}, {}) cannot be broadcast.",
+            "Two tensors with shapes ({:?}, {:?}) cannot be broadcast.",
             self.shape(),
             rhs.shape()
         ));
@@ -106,7 +106,7 @@ impl std::ops::Div for &CUDATensor<CUDAF32> {
     type Output = CUDATensor<CUDAF32>;
     fn div(self, rhs: Self) -> Self::Output {
         let (a, b) = broadcast(self, rhs).expect(&format!(
-            "Two tensors with shapes ({}, {}) cannot be broadcast.",
+            "Two tensors with shapes ({:?}, {:?}) cannot be broadcast.",
             self.shape(),
             rhs.shape()
         ));

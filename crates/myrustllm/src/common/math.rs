@@ -37,6 +37,7 @@ impl TensorAddReduce for &GenericTensor {
     }
 }
 
+#[derive(Debug)]
 pub struct AddReduceGrad {
     dims: Option<Vec<usize>>,
     keep_dim: bool,
@@ -52,11 +53,11 @@ impl AddReduceGrad {
 }
 
 impl OpGrad for AddReduceGrad {
-    fn forward(&mut self, inputs: &[GenericTensor]) -> Vec<GenericTensor> {
+    fn forward(&mut self, inputs: &[&GenericTensor]) -> Vec<GenericTensor> {
         vec![inputs[0].add_reduce(self.dims.as_ref().map(|v| v.as_slice()), self.keep_dim)]
     }
 
-    fn backward(&self, grad_inputs: &[TensorGrad]) -> Vec<TensorGrad> {
+    fn backward(&self, grad_inputs: &[&TensorGrad]) -> Vec<TensorGrad> {
         todo!()
     }
 }
@@ -64,18 +65,13 @@ impl OpGrad for AddReduceGrad {
 impl TensorAddReduce for &TensorGrad {
     type Output = TensorGrad;
     fn add_reduce(self, dims: Option<&[usize]>, keep_dim: bool) -> Self::Output {
-        let mut op = AddReduceGrad::new(dims, keep_dim);
-        let inputs = vec![self.borrow().clone()];
-        let output = op.forward(&inputs)[0].clone();
-        let output_shapes = vec![output.shape()];
-        TensorGrad::intermediate(
-            output,
-            GraphNode::new(Box::new(op), &vec![self.clone()], output_shapes, 1),
-            0,
-        )
+        let op = AddReduceGrad::new(dims, keep_dim);
+        let (node, outputs) = GraphNode::forward(op, &vec![self]);
+
+        TensorGrad::intermediate(outputs[0].clone(), node, 0)
     }
 }
-
+#[derive(Debug)]
 pub struct AddGrad {
     a_shape: Option<Shape>,
     b_shape: Option<Shape>,
@@ -110,20 +106,21 @@ impl AddGrad {
     }
 }
 
+
 impl OpGrad for AddGrad {
-    fn forward(&mut self, inputs: &[GenericTensor]) -> Vec<GenericTensor> {
+    fn forward(&mut self, inputs: &[&GenericTensor]) -> Vec<GenericTensor> {
         assert!(
             inputs.len() == 2,
             "AddGrad requires two operands, but got {}.",
             inputs.len()
         );
-        self.a_shape = Some(inputs[0].shape());
-        self.b_shape = Some(inputs[1].shape());
+        self.a_shape = Some(inputs[0].shape().clone());
+        self.b_shape = Some(inputs[1].shape().clone());
 
-        vec![&inputs[0] + &inputs[1]]
+        vec![inputs[0] + inputs[1]]
     }
 
-    fn backward(&self, grad_inputs: &[TensorGrad]) -> Vec<TensorGrad> {
+    fn backward(&self, grad_inputs: &[&TensorGrad]) -> Vec<TensorGrad> {
         let a_shape = self
             .a_shape
             .as_ref()
@@ -134,8 +131,8 @@ impl OpGrad for AddGrad {
             .expect("AddGrad forward hasn't been called.");
 
         return vec![
-            AddGrad::reduce_grad(&grad_inputs[0], a_shape),
-            AddGrad::reduce_grad(&grad_inputs[0], b_shape),
+            AddGrad::reduce_grad(grad_inputs[0], a_shape),
+            AddGrad::reduce_grad(grad_inputs[0], b_shape),
         ];
     }
 }
@@ -148,20 +145,8 @@ pub trait TensorAddReduce {
 impl std::ops::Add for &TensorGrad {
     type Output = TensorGrad;
     fn add(self, rhs: Self) -> Self::Output {
-        let mut op = AddGrad::new();
-        let inputs = vec![self.borrow().clone(), rhs.borrow().clone()];
-        let output = op.forward(&inputs)[0].clone();
-        let output_shapes = vec![output.shape()];
-
-        TensorGrad::intermediate(
-            output,
-            GraphNode::new(
-                Box::new(op),
-                &vec![self.clone(), rhs.clone()],
-                output_shapes,
-                1,
-            ),
-            0,
-        )
+        let op = AddGrad::new();
+        let (node, outputs) = GraphNode::forward(op, &vec![self, rhs]);
+        TensorGrad::intermediate(outputs[0].clone(), node, 0)
     }
 }

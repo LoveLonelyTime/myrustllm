@@ -1,7 +1,9 @@
-use crate::{common::{Shape, device::{self, Device}, dtype::DType, tensor::Tensor}, cpu::tensor::CPUTensor};
+use crate::common::{Shape, DType, Device, Tensor};
+use crate::cpu::tensor::CPUTensor;
 
 /// CPUGenericTensor
 /// Compared to `CPUTensor<T>`, the data type of `CPUGenericTensor` is dispatched dynamically.
+#[derive(Debug, Clone)]
 pub enum CPUGenericTensor {
     F32(CPUTensor<f32>),
     F64(CPUTensor<f64>),
@@ -38,17 +40,6 @@ impl Tensor for CPUGenericTensor {
     }
 }
 
-impl Clone for CPUGenericTensor {
-    fn clone(&self) -> Self {
-        match self {
-            CPUGenericTensor::F32(t) => CPUGenericTensor::F32(t.clone()),
-            CPUGenericTensor::F64(t) => CPUGenericTensor::F64(t.clone()),
-            CPUGenericTensor::I32(t) => CPUGenericTensor::I32(t.clone()),
-            CPUGenericTensor::I64(t) => CPUGenericTensor::I64(t.clone()),
-        }
-    }
-}
-
 impl From<CPUTensor<f32>> for CPUGenericTensor {
     fn from(value: CPUTensor<f32>) -> Self {
         CPUGenericTensor::F32(value)
@@ -61,26 +52,39 @@ impl From<CPUTensor<f64>> for CPUGenericTensor {
     }
 }
 
+impl From<CPUTensor<i32>> for CPUGenericTensor {
+    fn from(value: CPUTensor<i32>) -> Self {
+        CPUGenericTensor::I32(value)
+    }
+}
+
+impl From<CPUTensor<i64>> for CPUGenericTensor {
+    fn from(value: CPUTensor<i64>) -> Self {
+        CPUGenericTensor::I64(value)
+    }
+}
+
+// Create
 impl CPUGenericTensor {
-    pub fn like_zeros(tensor: &CPUGenericTensor) -> Self {
-        match tensor {
-            CPUGenericTensor::F32(t) => {
-                CPUGenericTensor::F32(CPUTensor::<f32>::fill_zeros(&t.shape()))
-            }
-            _ => {
-                todo!()
-            }
+    pub fn fill_zeros(shape: &Shape, dtype: DType) -> Self {
+        match dtype {
+            DType::F32 => CPUTensor::<f32>::fill_zeros(shape).into(),
+            _ => todo!(),
         }
     }
 
-    pub fn like_ones(tensor: &CPUGenericTensor) -> Self {
-        match tensor {
-            CPUGenericTensor::F32(t) => {
-                CPUGenericTensor::F32(CPUTensor::<f32>::fill_ones(&t.shape()))
-            }
-            _ => {
-                todo!()
-            }
+    pub fn fill_ones(shape: &Shape, dtype: DType) -> Self {
+        match dtype {
+            DType::F32 => CPUTensor::<f32>::fill_ones(shape).into(),
+            _ => todo!(),
         }
+    }
+
+    pub fn like_zeros(tensor: &CPUGenericTensor) -> Self {
+        CPUGenericTensor::fill_zeros(&tensor.shape(), tensor.dtype())
+    }
+
+    pub fn like_ones(tensor: &CPUGenericTensor) -> Self {
+        CPUGenericTensor::fill_ones(&tensor.shape(), tensor.dtype())
     }
 }

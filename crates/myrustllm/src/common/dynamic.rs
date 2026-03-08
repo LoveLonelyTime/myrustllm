@@ -3,11 +3,12 @@ use crate::cpu::dynamic::CPUGenericTensor;
 use crate::cuda::dynamic::GPUGenericTensor;
 
 /// Generic tensor.
-/// 
+///
 /// `GenericTensor` represents all tensors (dispatching device, dtype).
+#[derive(Clone, Debug)]
 pub enum GenericTensor {
     CPUTensor(CPUGenericTensor),
-    GPUTensor(GPUGenericTensor)
+    GPUTensor(GPUGenericTensor),
 }
 
 impl From<CPUGenericTensor> for GenericTensor {
@@ -26,38 +27,41 @@ impl Tensor for GenericTensor {
     fn shape(&self) -> Shape {
         match self {
             GenericTensor::CPUTensor(t) => t.shape(),
-            GenericTensor::GPUTensor(t) => t.shape()
+            GenericTensor::GPUTensor(t) => t.shape(),
         }
     }
 
     fn device(&self) -> Device {
         match self {
             GenericTensor::CPUTensor(t) => t.device(),
-            GenericTensor::GPUTensor(t) => t.device()
+            GenericTensor::GPUTensor(t) => t.device(),
         }
     }
 
     fn dtype(&self) -> DType {
         match self {
             GenericTensor::CPUTensor(t) => t.dtype(),
-            GenericTensor::GPUTensor(t) => t.dtype()
-        }
-    }
-}
-
-impl Clone for GenericTensor {
-    fn clone(&self) -> Self {
-        match self {
-            GenericTensor::CPUTensor(t) => GenericTensor::CPUTensor(t.clone()),
-            GenericTensor::GPUTensor(t) => GenericTensor::GPUTensor(t.clone())
+            GenericTensor::GPUTensor(t) => t.dtype(),
         }
     }
 }
 
 impl GenericTensor {
-    pub fn like_ones(tensor: &GenericTensor) -> Self {
-        match tensor {
-            _ => todo!()
+    pub fn fill_ones(shape: &Shape, dtype: DType, device: Device) -> Self {
+        match device {
+            Device::CPU => GenericTensor::CPUTensor(CPUGenericTensor::fill_ones(shape, dtype)),
+            _ => todo!(),
         }
+    }
+
+    pub fn fill_zeros(shape: &Shape, dtype: DType, device: Device) -> Self {
+        match device {
+            Device::CPU => GenericTensor::CPUTensor(CPUGenericTensor::fill_zeros(shape, dtype)),
+            _ => todo!(),
+        }
+    }
+
+    pub fn like_ones(tensor: &GenericTensor) -> Self {
+        GenericTensor::fill_ones(&tensor.shape(), tensor.dtype(), tensor.device())
     }
 }

@@ -1,25 +1,28 @@
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use crate::common::DType;
+
 /// If `T` implement `RawData`, `T` means that it is non-lifetime and can be copied.
 pub trait RawData: Copy {
-    fn name() -> &'static str;
+    fn dtype() -> DType;
 }
 
 impl RawData for f32 {
-    fn name() -> &'static str { "f32" }
+    fn dtype() -> DType { DType::F32 }
 }
 impl RawData for f64 {
-    fn name() -> &'static str { "f64" }
+    fn dtype() -> DType { DType::F64}
 }
 impl RawData for i32 {
-    fn name() -> &'static str { "i32" }
+    fn dtype() -> DType { DType::I32 }
 }
 impl RawData for i64 {
-    fn name() -> &'static str { "i64" }
+    fn dtype() -> DType { DType::I64 }
 }
 
 /// Tensor's representation in CPU memory.
+#[derive(Debug)]
 pub struct CPUMemory<T: RawData> {
     ptr: *mut T,
     size: usize,

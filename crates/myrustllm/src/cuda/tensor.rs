@@ -24,7 +24,7 @@ impl<T: CUDAType> Tensor for CUDATensor<T> {
     }
     
     fn device(&self) -> crate::common::Device {
-        Device::new("cuda", 0)
+        Device::CUDA(0)
     }
     
     fn dtype(&self) -> crate::common::DType {
@@ -100,7 +100,7 @@ impl<T: CUDAType> CUDATensor<T> {
         Some(CUDATensor {
             data: self.data.clone(),
             shape: target_shape.clone(),
-            stride: Shape::new(new_stride_v),
+            stride: new_stride_v.into(),
             offset: self.offset,
         })
     }
@@ -108,7 +108,7 @@ impl<T: CUDAType> CUDATensor<T> {
     /// Copy all values from another CUDA tensor
     pub fn copy_from(&mut self, rhs: &CUDATensor<T>) {
         let broadcast_rhs = rhs.broadcast_to(&self.shape()).expect(&format!(
-            "Rhs with shape {} cannot be broadcast to target shape {}!",
+            "Rhs with shape {:?} cannot be broadcast to target shape {:?}!",
             rhs.shape(),
             self.shape()
         ));
@@ -133,8 +133,8 @@ impl<T: CUDAType> CUDATensor<T> {
     ///
     /// The returned CPUTensor shares the same memory with `&self`
     pub fn slice(&self, indices: &[TensorIndex]) -> Self {
-        let mut new_shape = Shape::scalar();
-        let mut new_stride = Shape::scalar();
+        let mut new_shape_v = Vec::new();
+        let mut new_stride_v = Vec::new();
         let mut new_offset = self.offset;
 
         assert!(
@@ -213,14 +213,14 @@ impl<T: CUDAType> CUDATensor<T> {
 
         // Handle remained dimensions
         for dim in indices.len()..self.dims() {
-            new_shape.push_dim(self.shape[dim]);
-            new_stride.push_dim(self.stride[dim]);
+            new_shape_v.push(self.shape[dim]);
+            new_stride_v.push(self.stride[dim]);
         }
 
         CUDATensor {
             data: self.data.clone(), // Share
-            shape: new_shape,
-            stride: new_stride,
+            shape: new_shape_v.into(),
+            stride: new_stride_v.into(),
             offset: new_offset,
         }
     }

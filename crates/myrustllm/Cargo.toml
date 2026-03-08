@@ -1,0 +1,13 @@
+[package]
+name = "myrustllm"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+libc = "0.2"
+myrustllm-derive = { path = "../myrustllm-derive" }
+
+[build-dependencies]
+cmake = "0.1"
+bindgen = "0.72"

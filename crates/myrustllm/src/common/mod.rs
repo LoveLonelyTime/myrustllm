@@ -10,4 +10,5 @@ pub use shape::Shape;
 pub use device::Device;
 pub use dtype::DType;
 pub use tensor::Tensor;
+pub use tensor::TensorMeta;
 pub use dynamic::GenericTensor;
