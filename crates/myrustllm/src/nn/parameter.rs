@@ -14,8 +14,8 @@ impl Parameter {
 }
 
 impl Module for Parameter {
-    fn visit(&self, visitor: &mut dyn ModuleVisitor) {
-        visitor.visit_parameter(&self);
+    fn visit<'a>(&'a mut self, visitor: &mut dyn ModuleVisitor<'a>) {
+        visitor.visit_parameter(self);
     }
 }
 

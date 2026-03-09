@@ -37,6 +37,9 @@ extern "C"
     // FP32 ADD_R
     __MYRUSTLLM_API__ void cpu_tensor_add_f32_r(CPUTensor lhs, CPUTensor rhs, size_t batch_dims);
 
+    // FP32 MATMUL
+    __MYRUSTLLM_API__ void cpu_tensor_matmul_f32(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
+
 #ifdef __cplusplus
 }
 #endif

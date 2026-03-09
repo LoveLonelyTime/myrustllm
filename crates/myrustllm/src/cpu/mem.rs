@@ -60,4 +60,10 @@ impl<T: RawData> Drop for CPUMemory<T> {
     }
 }
 
+impl <T: RawData> From<CPUMemory<T>> for SharedCPUMemory<T> {
+    fn from(value: CPUMemory<T>) -> Self {
+        Rc::new(RefCell::new(value))
+    }
+}
+
 pub type SharedCPUMemory<T> = Rc<RefCell<CPUMemory<T>>>;

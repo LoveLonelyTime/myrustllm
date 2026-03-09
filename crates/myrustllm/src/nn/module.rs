@@ -4,8 +4,8 @@ use myrustllm_derive::Module;
 
 use crate::nn::parameter::Parameter;
 
-pub trait ModuleVisitor {
-    fn visit_parameter(&mut self, p: &Parameter);
+pub trait ModuleVisitor<'a> {
+    fn visit_parameter(&mut self, p: &'a mut Parameter);
 }
 
 pub trait Forward<Input> {
@@ -14,11 +14,11 @@ pub trait Forward<Input> {
 }
 
 pub trait Module {
-    fn visit(&self, visitor: &mut dyn ModuleVisitor);
+    fn visit<'a>(&'a mut self, visitor: &mut dyn ModuleVisitor<'a>);
 }
 
 impl<T: Module> Module for Option<T> {
-    fn visit(&self, visitor: &mut dyn ModuleVisitor) {
+    fn visit<'a>(&'a mut self, visitor: &mut dyn ModuleVisitor<'a>) {
         if let Some(m) = self {
             m.visit(visitor);
         }
@@ -62,4 +62,26 @@ macro_rules! cascade {
     ($m1:expr, $($rest:expr),+) => {
         $crate::nn::module::CascadeModule2::cascade($m1, cascade!($($rest),+))
     };
+}
+
+pub struct ParamCollector<'a> {
+    pub params: Vec<&'a mut Parameter>,
+}
+
+impl<'a> ParamCollector<'a> {
+    pub fn new() -> Self {
+        ParamCollector { params: Vec::new() }
+    }
+}
+
+impl<'a> ModuleVisitor<'a> for ParamCollector<'a> {
+    fn visit_parameter(&mut self, p: &'a mut Parameter) {
+        self.params.push(p);
+    }
+}
+
+impl<'a> Into<Vec<&'a mut Parameter>> for ParamCollector<'a> {
+    fn into(self) -> Vec<&'a mut Parameter> {
+        self.params
+    }
 }

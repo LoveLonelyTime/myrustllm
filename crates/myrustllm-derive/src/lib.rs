@@ -39,7 +39,7 @@ pub fn derive_module(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl #impl_generics #crate_ident::nn::module::Module for #name #ty_generics #where_clause {
-            fn visit(&self, v: &mut dyn #crate_ident::nn::module::ModuleVisitor) {
+            fn visit<'a>(&'a mut self, v: &mut dyn #crate_ident::nn::module::ModuleVisitor<'a>) {
                 #( #visits )*
             }
         }

@@ -26,8 +26,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenMP::OpenMP_CXX)
-
-target_compile_options(${PROJECT_NAME} PRIVATE -mavx -mavx2 -msse4.2)
+# 
+target_compile_options(${PROJECT_NAME} PRIVATE -mavx -mavx2 -msse4.2 -O3 -march=native)
 
 # Install
 install(TARGETS ${PROJECT_NAME}

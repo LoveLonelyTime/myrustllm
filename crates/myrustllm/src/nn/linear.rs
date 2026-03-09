@@ -1,8 +1,10 @@
 use crate::{
-    common::{DType, Device, GenericTensor, Shape, autograd::TensorGrad},
+    common::{DType, Device, GenericTensor, Shape, autograd::TensorGrad, math::TensorTranspose},
     nn::{module::Forward, parameter::Parameter},
 };
 use myrustllm_derive::Module;
+
+use crate::common::math::TensorMatmul;
 
 #[derive(Module)]
 pub struct Linear {
@@ -40,8 +42,7 @@ impl Linear {
 impl Forward<TensorGrad> for Linear {
     type Output = TensorGrad;
     fn forward(&self, input: TensorGrad) -> Self::Output {
-        // TODO: matmul
-        let output_mul = &self.weight.tensor + &input;
+        let output_mul = input.matmul(&self.weight.tensor.transpose());
 
         if let Some(bias) = &self.bias {
             &output_mul + &bias.tensor

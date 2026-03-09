@@ -39,9 +39,9 @@ impl<T: RawData> Tensor for CPUTensor<T> {
 
 impl<T: RawData> CPUTensor<T> {
     /// Create a new CPU tensor.
-    pub fn new(data: CPUMemory<T>, shape: &Shape, stride: &Shape, offset: usize) -> Self {
+    pub fn new(data: SharedCPUMemory<T>, shape: &Shape, stride: &Shape, offset: usize) -> Self {
         CPUTensor {
-            data: Rc::new(RefCell::new(data)),
+            data,
             shape: shape.clone(),
             stride: stride.clone(),
             offset,
@@ -53,7 +53,7 @@ impl<T: RawData> CPUTensor<T> {
     /// The new tensor will be filled with dirty data.
     pub fn from_shape(shape: &Shape) -> Self {
         CPUTensor::new(
-            CPUMemory::new(shape.numel()),
+            CPUMemory::new(shape.numel()).into(),
             shape,
             &Shape::create_contiguous_stride(shape),
             0,
@@ -84,7 +84,7 @@ impl<T: RawData> CPUTensor<T> {
             std::ptr::copy_nonoverlapping(data.as_ptr(), mem.as_mut_ptr(), data.len());
         };
 
-        CPUTensor::new(mem, &shape, &stride, 0)
+        CPUTensor::new(mem.into(), &shape, &stride, 0)
     }
 
     /// Create a new CPU scalar.
@@ -96,7 +96,7 @@ impl<T: RawData> CPUTensor<T> {
             *mem.as_mut_ptr() = input;
         };
 
-        CPUTensor::new(mem, &shape, &stride, 0)
+        CPUTensor::new(mem.into(), &shape, &stride, 0)
     }
 
     /// Return a const ref of inner scalar.
@@ -118,6 +118,10 @@ impl<T: RawData> CPUTensor<T> {
     /// Return the offset of the tensor.
     pub fn offset(&self) -> usize {
         self.offset
+    }
+
+    pub fn data(&self) -> &SharedCPUMemory<T> {
+        &self.data
     }
 
     /// Return the total stride of the tensor.
@@ -538,46 +542,6 @@ impl<T: RawData> CPUTensor<T> {
             stride: new_stride_v.into(),
             offset: self.offset(),
         })
-    }
-
-    /// Permute the dimensions of the tensor.
-    ///
-    /// For `dims`, each number from `0..dims.len()` must appear just once.
-    pub fn permute(&self, dims: &[usize]) -> Self {
-        // Check
-        assert!(
-            dims.len() == self.dims(),
-            "The size of dims must be {}, but got {}.",
-            self.dims(),
-            dims.len()
-        );
-
-        let mut checklist = vec![false; self.dims()];
-        for &i in dims {
-            assert!(
-                i < self.dims(),
-                "Index {} is out of bounds of the dimensions with size {}.",
-                i,
-                self.dims()
-            );
-            checklist[i] = true;
-        }
-        assert!(checklist.iter().all(|&x| x), "Invalid dims: {:?}.", dims);
-
-        // Permute
-        let mut new_shape_v = vec![0; self.dims()];
-        let mut new_stride_v = vec![0; self.dims()];
-        for (new_i, &i) in dims.iter().enumerate() {
-            new_shape_v[new_i] = self.shape()[i];
-            new_stride_v[new_i] = self.stride()[i];
-        }
-
-        CPUTensor {
-            data: self.data.clone(), // Share
-            shape: new_shape_v.into(),
-            stride: new_stride_v.into(),
-            offset: self.offset,
-        }
     }
 }
 

@@ -55,7 +55,7 @@ macro_rules! enable_grad {
 }
 
 pub trait OpGrad: Debug {
-    fn forward(&mut self, inputs: &[&GenericTensor]) -> Vec<GenericTensor>;
+    fn forward(&self, inputs: &[&GenericTensor]) -> Vec<GenericTensor>;
     fn backward(&self, grad_inputs: &[&TensorGrad]) -> Vec<TensorGrad>;
 }
 
@@ -150,7 +150,7 @@ impl GraphNodeBase {
 struct LeafGrad;
 
 impl OpGrad for LeafGrad {
-    fn forward(&mut self, _inputs: &[&GenericTensor]) -> Vec<GenericTensor> {
+    fn forward(&self, _inputs: &[&GenericTensor]) -> Vec<GenericTensor> {
         Vec::new()
     }
 
@@ -164,7 +164,7 @@ impl GraphNode {
     /// This function will apply `inputs` with `op` and create a node with connections on DAG.
     /// This function will return (node, outputs). If a node isn't needed on DAG, it will return `None`.
     pub fn forward(
-        mut op: impl OpGrad + 'static,
+        op: impl OpGrad + 'static,
         inputs: &[&TensorGrad],
     ) -> (Option<Self>, Vec<GenericTensor>) {
         // Execute op

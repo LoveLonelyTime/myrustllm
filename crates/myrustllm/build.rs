@@ -15,7 +15,7 @@ fn build_myrustllm_cpu() {
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=dylib=myrustllm-cpu");
 
-    let _ = fs::copy(format!("{}/lib/libmyrustllm-cpu.so", dst.display()), "target/debug/libmyrustllm-cpu.so");
+    let _ = fs::copy(format!("{}/lib/libmyrustllm-cpu.so", dst.display()), "../../target/debug/libmyrustllm-cpu.so");
     
     let bindings = bindgen::Builder::default()
         .header("myrustllm-cpu/include/myrustllm-cpu.h")
