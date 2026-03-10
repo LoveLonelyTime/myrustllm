@@ -4,8 +4,8 @@ use myrustllm_derive::Module;
 
 use crate::nn::parameter::Parameter;
 
-pub trait ModuleVisitor<'a> {
-    fn visit_parameter(&mut self, p: &'a mut Parameter);
+pub trait ModuleVisitor<'a>{
+    fn visit_parameter(&mut self, param: &'a mut Parameter);
 }
 
 pub trait Forward<Input> {
@@ -14,13 +14,13 @@ pub trait Forward<Input> {
 }
 
 pub trait Module {
-    fn visit<'a>(&'a mut self, visitor: &mut dyn ModuleVisitor<'a>);
+    fn apply<'a>(&'a mut self, visitor: &mut dyn ModuleVisitor<'a>);
 }
 
 impl<T: Module> Module for Option<T> {
-    fn visit<'a>(&'a mut self, visitor: &mut dyn ModuleVisitor<'a>) {
+    fn apply<'a>(&'a mut self, visitor: &mut dyn ModuleVisitor<'a>) {
         if let Some(m) = self {
-            m.visit(visitor);
+            m.apply(visitor);
         }
     }
 }
@@ -75,8 +75,8 @@ impl<'a> ParamCollector<'a> {
 }
 
 impl<'a> ModuleVisitor<'a> for ParamCollector<'a> {
-    fn visit_parameter(&mut self, p: &'a mut Parameter) {
-        self.params.push(p);
+    fn visit_parameter(&mut self, param: &'a mut Parameter) {
+        self.params.push(param);
     }
 }
 

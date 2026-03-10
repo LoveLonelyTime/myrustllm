@@ -1,6 +1,4 @@
-use std::cell::RefCell;
 use std::iter::zip;
-use std::rc::Rc;
 use std::{env, vec};
 
 use crate::common::Shape;
@@ -9,9 +7,8 @@ use crate::common::dtype::DType;
 use crate::common::math::TensorCopy;
 use crate::common::tensor::Tensor;
 use crate::cpu::interface;
-use crate::cpu::literal::Literal;
 use crate::cpu::math::TensorCopyBase;
-use crate::cpu::mem::{CPUMemory, RawData, SharedCPUMemory};
+use crate::cpu::mem::{RawData, SharedCPUMemory};
 use crate::cpu::slice::TensorIndex;
 
 /// Tensor in the CPU memory.
@@ -46,57 +43,6 @@ impl<T: RawData> CPUTensor<T> {
             stride: stride.clone(),
             offset,
         }
-    }
-
-    /// Create a new CPU tensor with shape `shape`.
-    ///
-    /// The new tensor will be filled with dirty data.
-    pub fn from_shape(shape: &Shape) -> Self {
-        CPUTensor::new(
-            CPUMemory::new(shape.numel()).into(),
-            shape,
-            &Shape::create_contiguous_stride(shape),
-            0,
-        )
-    }
-
-    /// Create a new CPU tensor from the array `input`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use myrustllm::cpu::tensor::CPUTensor;
-    ///
-    /// let tensor = CPUTensor::<f32>::from_literal([
-    ///     [1.0, 1.0],
-    ///     [2.0, 2.0]
-    /// ]);
-    /// ```
-    pub fn from_literal<U: Literal<T>>(input: U) -> Self {
-        let mut data = Vec::new();
-        input.flatten(&mut data);
-
-        let shape = input.shape();
-        let stride = Shape::create_contiguous_stride(&shape);
-        let mut mem = CPUMemory::new(shape.numel());
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(data.as_ptr(), mem.as_mut_ptr(), data.len());
-        };
-
-        CPUTensor::new(mem.into(), &shape, &stride, 0)
-    }
-
-    /// Create a new CPU scalar.
-    pub fn scalar(input: T) -> Self {
-        let shape = Shape::scalar();
-        let stride = Shape::create_contiguous_stride(&shape);
-        let mut mem = CPUMemory::new(1);
-        unsafe {
-            *mem.as_mut_ptr() = input;
-        };
-
-        CPUTensor::new(mem.into(), &shape, &stride, 0)
     }
 
     /// Return a const ref of inner scalar.
@@ -546,13 +492,6 @@ impl<T: RawData> CPUTensor<T> {
 }
 
 impl<T: TensorCopyBase> CPUTensor<T> {
-    /// Create a new CPU tensor filled with `input`.
-    pub fn fill(shape: &Shape, input: T) -> Self {
-        let mut out = CPUTensor::from_shape(shape);
-        out.copy_from(&CPUTensor::scalar(input));
-        out
-    }
-
     /// Return a tensor with the same data copyed from its original data, but with the specified shape `new_shape`.
     ///
     /// The number of elements must be equal.
@@ -598,7 +537,7 @@ impl<T: TensorCopyBase> CPUTensor<T> {
         );
 
         // Copy
-        let mut out = CPUTensor::from_shape(&new_shape_v.into());
+        let mut out = CPUTensor::alloc(&new_shape_v.into());
         out.copy_from(self);
 
         out
@@ -682,15 +621,5 @@ impl<T: RawData + std::fmt::Debug> std::fmt::Debug for CPUTensor<T> {
         }
 
         _fmt_recursive(limit, f, self, trace.as_mut_slice(), 0)
-    }
-}
-
-impl CPUTensor<f32> {
-    pub fn fill_zeros(shape: &Shape) -> Self {
-        CPUTensor::fill(shape, 0.0)
-    }
-
-    pub fn fill_ones(shape: &Shape) -> Self {
-        CPUTensor::fill(shape, 1.0)
     }
 }

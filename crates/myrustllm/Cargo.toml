@@ -6,6 +6,7 @@ build = "build.rs"
 
 [dependencies]
 libc = "0.2"
+num-traits = "0.2"
 myrustllm-derive = { path = "../myrustllm-derive" }
 
 [build-dependencies]

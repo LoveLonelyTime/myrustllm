@@ -45,23 +45,3 @@ impl Tensor for GenericTensor {
         }
     }
 }
-
-impl GenericTensor {
-    pub fn fill_ones(shape: &Shape, dtype: DType, device: Device) -> Self {
-        match device {
-            Device::CPU => GenericTensor::CPUTensor(CPUGenericTensor::fill_ones(shape, dtype)),
-            _ => todo!(),
-        }
-    }
-
-    pub fn fill_zeros(shape: &Shape, dtype: DType, device: Device) -> Self {
-        match device {
-            Device::CPU => GenericTensor::CPUTensor(CPUGenericTensor::fill_zeros(shape, dtype)),
-            _ => todo!(),
-        }
-    }
-
-    pub fn like_ones(tensor: &GenericTensor) -> Self {
-        GenericTensor::fill_ones(&tensor.shape(), tensor.dtype(), tensor.device())
-    }
-}

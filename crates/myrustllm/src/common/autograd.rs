@@ -78,7 +78,7 @@ impl GraphNodeBase {
         // TODO: replace fill_zeros with broadcast_to
         for ((shape, dtype, device), grad) in zip(&self.output_metas, &mut self.input_grad) {
             *grad = Some(TensorGrad::leaf(
-                GenericTensor::fill_zeros(shape, *dtype, *device),
+                GenericTensor::zeros(shape, *dtype, *device),
                 false,
             ));
         }
@@ -342,8 +342,12 @@ impl TensorGrad {
     }
 
     /// Return the ref of the inner grad.
-    pub fn grad(&self) -> Ref<'_, Option<TensorGrad>> {
-        self.0.grad.borrow()
+    pub fn grad(&self) -> Option<TensorGrad> {
+        self.0.grad.borrow().clone()
+    }
+
+    pub fn zero_grad(&mut self) {
+        self.0.grad.borrow_mut().take();
     }
 
     /// Backward from the node.

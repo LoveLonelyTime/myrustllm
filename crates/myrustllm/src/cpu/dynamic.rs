@@ -1,4 +1,4 @@
-use crate::common::{Shape, DType, Device, Tensor};
+use crate::common::{DType, Device, Shape, Tensor};
 use crate::cpu::tensor::CPUTensor;
 
 /// CPUGenericTensor
@@ -61,30 +61,5 @@ impl From<CPUTensor<i32>> for CPUGenericTensor {
 impl From<CPUTensor<i64>> for CPUGenericTensor {
     fn from(value: CPUTensor<i64>) -> Self {
         CPUGenericTensor::I64(value)
-    }
-}
-
-// Create
-impl CPUGenericTensor {
-    pub fn fill_zeros(shape: &Shape, dtype: DType) -> Self {
-        match dtype {
-            DType::F32 => CPUTensor::<f32>::fill_zeros(shape).into(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn fill_ones(shape: &Shape, dtype: DType) -> Self {
-        match dtype {
-            DType::F32 => CPUTensor::<f32>::fill_ones(shape).into(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn like_zeros(tensor: &CPUGenericTensor) -> Self {
-        CPUGenericTensor::fill_zeros(&tensor.shape(), tensor.dtype())
-    }
-
-    pub fn like_ones(tensor: &CPUGenericTensor) -> Self {
-        CPUGenericTensor::fill_ones(&tensor.shape(), tensor.dtype())
     }
 }

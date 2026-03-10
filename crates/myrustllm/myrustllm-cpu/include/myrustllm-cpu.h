@@ -2,6 +2,7 @@
 #define MYRUSTLLM_CPU_H
 
 #include <stdlib.h>
+#include <stdint.h>
 typedef struct
 {
     void* data;
@@ -37,8 +38,20 @@ extern "C"
     // FP32 ADD_R
     __MYRUSTLLM_API__ void cpu_tensor_add_f32_r(CPUTensor lhs, CPUTensor rhs, size_t batch_dims);
 
+    // FP32 MUL
+    __MYRUSTLLM_API__ void cpu_tensor_mul_f32(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
+
+    // FP32 SUB_
+    __MYRUSTLLM_API__ void cpu_tensor_sub_f32_(CPUTensor lhs, CPUTensor rhs);
+
     // FP32 MATMUL
     __MYRUSTLLM_API__ void cpu_tensor_matmul_f32(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
+
+    // FP32 INIT FILL
+    __MYRUSTLLM_API__ void cpu_tensor_init_fill_f32_(CPUTensor tensor, float val);
+    
+    // FP32 INIT NORMAL
+    __MYRUSTLLM_API__ void cpu_tensor_init_normal_f32_(CPUTensor tensor, float mean, float std, uint64_t seed);
 
 #ifdef __cplusplus
 }

@@ -153,6 +153,61 @@ void cpu_tensor_add_f32_r(CPUTensor lhs, CPUTensor rhs, size_t batch_dims)
     }
 }
 
+
+void cpu_tensor_sub_f32_(CPUTensor lhs, CPUTensor rhs)
+{
+    size_t n_elements = tensor_numel(lhs);
+#pragma omp parallel
+    {
+        int thread_id = omp_get_thread_num();
+        int num_threads = omp_get_num_threads();
+        int chunk_size = n_elements / num_threads;
+        int start = thread_id * chunk_size;
+        int end = (thread_id == num_threads - 1) ? n_elements : start + chunk_size;
+
+        std::vector<size_t> lhs_idx = tensor_linear2idx(lhs, start);
+        std::vector<size_t> rhs_idx = tensor_linear2idx(rhs, start);
+
+        for (int i = start; i < end; i++)
+        {
+            size_t lhs_offset = tensor_idx2offset(lhs, lhs_idx);
+            size_t rhs_offset = tensor_idx2offset(rhs, rhs_idx);
+            TENSOR_PTR(lhs.data, float, lhs_offset) -= TENSOR_PTR(rhs.data, float, rhs_offset);
+            tensor_next_idx(lhs, lhs_idx);
+            tensor_next_idx(rhs, rhs_idx);
+        }
+    }
+}
+
+
+void cpu_tensor_mul_f32(CPUTensor out, CPUTensor lhs, CPUTensor rhs)
+{
+    size_t n_elements = tensor_numel(lhs);
+#pragma omp parallel
+    {
+        int thread_id = omp_get_thread_num();
+        int num_threads = omp_get_num_threads();
+        int chunk_size = n_elements / num_threads;
+        int start = thread_id * chunk_size;
+        int end = (thread_id == num_threads - 1) ? n_elements : start + chunk_size;
+
+        std::vector<size_t> lhs_idx = tensor_linear2idx(lhs, start);
+        std::vector<size_t> rhs_idx = tensor_linear2idx(rhs, start);
+        std::vector<size_t> out_idx = tensor_linear2idx(out, start);
+
+        for (int i = start; i < end; i++)
+        {
+            size_t lhs_offset = tensor_idx2offset(lhs, lhs_idx);
+            size_t rhs_offset = tensor_idx2offset(rhs, rhs_idx);
+            size_t out_offset = tensor_idx2offset(out, out_idx);
+            TENSOR_PTR(out.data, float, out_offset) = TENSOR_PTR(lhs.data, float, lhs_offset) * TENSOR_PTR(rhs.data, float, rhs_offset);
+            tensor_next_idx(lhs, lhs_idx);
+            tensor_next_idx(rhs, rhs_idx);
+            tensor_next_idx(out, out_idx);
+        }
+    }
+}
+
 void cpu_tensor_matmul_f32(CPUTensor out, CPUTensor lhs, CPUTensor rhs)
 {
     size_t NUM_DIM = out.dims;

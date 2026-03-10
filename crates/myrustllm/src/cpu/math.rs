@@ -67,7 +67,7 @@ impl TensorAddBase for f32 {
             rhs.shape()
         ));
 
-        let out = CPUTensor::from_shape(&lhs.shape());
+        let out = CPUTensor::alloc(&lhs.shape());
 
         unsafe {
             interface::cpu_tensor_add_f32(
@@ -179,7 +179,7 @@ impl TensorAddReduceBase for f32 {
 
         // Reduce
         let reduce_tensor = tensor.permute(&permute_list);
-        let res_tensor = CPUTensor::from_shape(&old_shape_v.clone().into());
+        let res_tensor = CPUTensor::alloc(&old_shape_v.clone().into());
 
         unsafe {
             interface::cpu_tensor_add_f32_r(
@@ -207,6 +207,95 @@ impl TensorAddReduceBase for f32 {
 }
 
 // ================================================== ADD_R ==================================================
+
+// ================================================== ADD_ ==================================================
+pub trait TensorSubAssignBase<Rhs: RawData = Self>: RawData + std::ops::SubAssign<Rhs> {
+    fn sub_assign(lhs: &mut CPUTensor<Self>, rhs: &CPUTensor<Rhs>);
+}
+
+impl<T: TensorSubAssignBase<Rhs>, Rhs: RawData> std::ops::SubAssign<&CPUTensor<Rhs>>
+    for CPUTensor<T>
+{
+    fn sub_assign(&mut self, rhs: &CPUTensor<Rhs>) {
+        <T as TensorSubAssignBase<Rhs>>::sub_assign(self, rhs);
+    }
+}
+
+impl std::ops::SubAssign<&CPUGenericTensor> for CPUGenericTensor {
+    fn sub_assign(&mut self, rhs: &CPUGenericTensor) {
+        match (self, rhs) {
+            (CPUGenericTensor::F32(lhs), CPUGenericTensor::F32(rhs)) => *lhs -= rhs,
+            _ => panic!("Not supported!"),
+        };
+    }
+}
+
+impl TensorSubAssignBase for f32 {
+    fn sub_assign(lhs: &mut CPUTensor<Self>, rhs: &CPUTensor<Self>) {
+        let rhs = rhs.broadcast_to(&lhs.shape()).expect(&format!(
+            "The rhs tensor with the shape {:?} cannot be broadcast to the shape {:?} of the lhs tensor.",
+            rhs.shape(),
+            lhs.shape()
+        ));
+
+        unsafe {
+            interface::cpu_tensor_sub_f32_(lhs.into_interface(), rhs.into_interface());
+        };
+    }
+}
+
+// ================================================== ADD_ ==================================================
+
+// ================================================== MUL ==================================================
+
+pub trait TensorMulBase<Rhs: RawData = Self>:
+    RawData + std::ops::Mul<Rhs, Output: RawData>
+{
+    fn mul(lhs: &CPUTensor<Self>, rhs: &CPUTensor<Rhs>) -> CPUTensor<Self::Output>;
+}
+
+impl<T: TensorAddBase<Rhs>, Rhs: RawData> std::ops::Mul<&CPUTensor<Rhs>> for &CPUTensor<T> {
+    type Output = CPUTensor<T::Output>;
+
+    fn mul(self, rhs: &CPUTensor<Rhs>) -> Self::Output {
+        <T as TensorAddBase<Rhs>>::add(self, rhs)
+    }
+}
+
+impl std::ops::Mul for &CPUGenericTensor {
+    type Output = CPUGenericTensor;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (CPUGenericTensor::F32(lhs), CPUGenericTensor::F32(rhs)) => (lhs * rhs).into(),
+            _ => panic!("Not supported!"),
+        }
+    }
+}
+
+impl TensorMulBase for f32 {
+    fn mul(lhs: &CPUTensor<Self>, rhs: &CPUTensor<Self>) -> CPUTensor<Self::Output> {
+        let (lhs, rhs) = broadcast(lhs, rhs).expect(&format!(
+            "Two tensors with shapes ({:?}, {:?}) cannot be broadcast.",
+            lhs.shape(),
+            rhs.shape()
+        ));
+
+        let out = CPUTensor::alloc(&lhs.shape());
+
+        unsafe {
+            interface::cpu_tensor_mul_f32(
+                out.into_interface(),
+                lhs.into_interface(),
+                rhs.into_interface(),
+            );
+        };
+
+        out
+    }
+}
+
+// ================================================== MUL ==================================================
 
 // ================================================== MATMUL ==================================================
 pub trait TensorMatmulBase<Rhs: RawData = Self>:
@@ -270,7 +359,7 @@ impl TensorMatmulBase for f32 {
 
         let mut out_shape_v = Vec::from(batch_shape.as_ref());
         out_shape_v.extend(&[m, n]);
-        let out = CPUTensor::fill_zeros(&Shape::from(out_shape_v));
+        let out = CPUTensor::alloc(&Shape::from(out_shape_v));
 
         unsafe {
             interface::cpu_tensor_matmul_f32(

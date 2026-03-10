@@ -33,13 +33,13 @@ pub fn derive_module(input: TokenStream) -> TokenStream {
     let visits = fields.iter().filter(|f| has_module_attr(f)).map(|f| {
         let ident = &f.ident;
         quote! {
-            self.#ident.visit(v);
+            self.#ident.apply(v);
         }
     });
 
     let expanded = quote! {
         impl #impl_generics #crate_ident::nn::module::Module for #name #ty_generics #where_clause {
-            fn visit<'a>(&'a mut self, v: &mut dyn #crate_ident::nn::module::ModuleVisitor<'a>) {
+            fn apply<'a>(&'a mut self, v: &mut dyn #crate_ident::nn::module::ModuleVisitor<'a>) {
                 #( #visits )*
             }
         }

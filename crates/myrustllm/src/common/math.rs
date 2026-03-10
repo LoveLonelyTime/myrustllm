@@ -1,3 +1,5 @@
+use std::ops::SubAssign;
+
 use crate::common::{
     GenericTensor, Shape, Tensor,
     autograd::{GraphNode, OpGrad, TensorGrad},
@@ -97,6 +99,37 @@ impl std::ops::Add for &TensorGrad {
 }
 
 // ================================================== ADD ==================================================
+
+// ================================================== SUB_ ==================================================
+
+impl SubAssign<&GenericTensor> for GenericTensor {
+    fn sub_assign(&mut self, rhs: &GenericTensor) {
+        match (self, rhs) {
+            (GenericTensor::CPUTensor(lhs), GenericTensor::CPUTensor(rhs)) => {
+                *lhs -= rhs;
+            }
+            _ => todo!(),
+        }
+    }
+}
+
+// ================================================== SUB_ ==================================================
+
+// ================================================== MUL ==================================================
+
+impl std::ops::Mul for &GenericTensor {
+    type Output = GenericTensor;
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (GenericTensor::CPUTensor(lhs), GenericTensor::CPUTensor(rhs)) => {
+                GenericTensor::CPUTensor(lhs * rhs)
+            }
+            _ => todo!(),
+        }
+    }
+}
+
+// ================================================== MUL ==================================================
 
 // ================================================== ADD_REDUCE ==================================================
 
