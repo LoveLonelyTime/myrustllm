@@ -1,12 +1,36 @@
-use crate::common::{DType, Device, Shape};
+use crate::{
+    common::{
+        DType, Shape,
+        dtype::{DTypeImpl, F32},
+        impls::Impl,
+    },
+    cpu::impls::CPU,
+};
+
+pub struct Tensor<I: Impl = CPU, TI: DTypeImpl<I> = F32> {
+    pub prototype: TI::Prototype,
+}
+
+impl<I: Impl, TI: DTypeImpl<I>> Tensor<I, TI> {
+    pub fn new(prototype: TI::Prototype) -> Self {
+        Self { prototype }
+    }
+}
+
+impl<I: Impl, TI: DTypeImpl<I>> TensorPrototype for Tensor<I, TI> {
+    fn shape(&self) -> Shape {
+        self.prototype.shape()
+    }
+
+    fn dtype(&self) -> DType {
+        self.prototype.dtype()
+    }
+}
 
 /// The trait of multi-dimension tensors.
-pub trait Tensor {
+pub trait TensorPrototype {
     /// Return the shape of `&self`.
     fn shape(&self) -> Shape;
-
-    /// Return the device in which the tensor is accommodating.
-    fn device(&self) -> Device;
 
     /// Return the dtype of the tensor.
     fn dtype(&self) -> DType;
@@ -27,5 +51,4 @@ pub trait Tensor {
     }
 }
 
-/// The meta data of tensor: (Shape, DType, Device).
-pub type TensorMeta = (Shape, DType, Device);
+pub type TensorMeta<I: Impl> = (Shape, DType, I::Device);

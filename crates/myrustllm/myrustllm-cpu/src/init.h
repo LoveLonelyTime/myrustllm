@@ -1,5 +1,5 @@
-#ifndef INIT_H
-#define INIT_H
+#ifndef __INIT_H__
+#define __INIT_H__
 
 #include <cmath>
 #include <cstdint>
@@ -78,4 +78,50 @@ inline float normal(uint64_t seed, uint64_t index, float mean, float std)
     return mean + std * r * std::cos(theta);
 }
 
-#endif // INIT_H
+// template<typename T>
+// void tensor_init_fill_impl(CPUTensor &tensor, T val)
+// {
+//     size_t n_elements = tensor_numel(tensor);
+// #pragma omp parallel
+//     {
+//         int thread_id = omp_get_thread_num();
+//         int num_threads = omp_get_num_threads();
+//         int chunk_size = n_elements / num_threads;
+//         int start = thread_id * chunk_size;
+//         int end = (thread_id == num_threads - 1) ? n_elements : start + chunk_size;
+
+//         std::vector<size_t> idx = tensor_linear2idx(tensor, start);
+
+//         for (int i = start; i < end; i++)
+//         {
+//             size_t offset = tensor_idx2offset(tensor, idx);
+//             tensor_data<T>(tensor)[offset] = val;
+//             tensor_next_idx(tensor, idx);
+//         }
+//     }
+// }
+
+// template<typename T>
+// void tensor_init_normal_impl(CPUTensor tensor, float mean, float std, uint64_t seed)
+// {
+//     size_t n_elements = tensor_numel(tensor);
+// #pragma omp parallel
+//     {
+//         int thread_id = omp_get_thread_num();
+//         int num_threads = omp_get_num_threads();
+//         int chunk_size = n_elements / num_threads;
+//         int start = thread_id * chunk_size;
+//         int end = (thread_id == num_threads - 1) ? n_elements : start + chunk_size;
+
+//         std::vector<size_t> idx = tensor_linear2idx(tensor, start);
+
+//         for (int i = start; i < end; i++)
+//         {
+//             size_t offset = tensor_idx2offset(tensor, idx);
+//             TENSOR_PTR(tensor.data, float, offset) = normal(seed, i, mean, std);
+//             tensor_next_idx(tensor, idx);
+//         }
+//     }
+// }
+
+#endif // __INIT_H__

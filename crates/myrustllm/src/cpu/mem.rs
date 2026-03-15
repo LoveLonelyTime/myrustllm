@@ -1,35 +1,15 @@
-use std::rc::Rc;
 use std::cell::RefCell;
-
-use crate::common::DType;
-
-/// If `T` implement `RawData`, `T` means that it is non-lifetime and can be copied.
-pub trait RawData: Copy {
-    fn dtype() -> DType;
-}
-
-impl RawData for f32 {
-    fn dtype() -> DType { DType::F32 }
-}
-impl RawData for f64 {
-    fn dtype() -> DType { DType::F64}
-}
-impl RawData for i32 {
-    fn dtype() -> DType { DType::I32 }
-}
-impl RawData for i64 {
-    fn dtype() -> DType { DType::I64 }
-}
+use std::rc::Rc;
 
 /// Tensor's representation in CPU memory.
 #[derive(Debug)]
-pub struct CPUMemory<T: RawData> {
+pub struct CPUMemory<T> {
     ptr: *mut T,
     size: usize,
     layout: std::alloc::Layout,
 }
 
-impl<T: RawData> CPUMemory<T> {
+impl<T> CPUMemory<T> {
     /// Allocate a CPU memory area
     ///
     /// `size` is the number of elements
@@ -52,7 +32,7 @@ impl<T: RawData> CPUMemory<T> {
     }
 }
 
-impl<T: RawData> Drop for CPUMemory<T> {
+impl<T> Drop for CPUMemory<T> {
     fn drop(&mut self) {
         unsafe {
             std::alloc::dealloc(self.ptr as *mut u8, self.layout);
@@ -60,10 +40,11 @@ impl<T: RawData> Drop for CPUMemory<T> {
     }
 }
 
-impl <T: RawData> From<CPUMemory<T>> for SharedCPUMemory<T> {
+impl<T> From<CPUMemory<T>> for SharedCPUMemory<T> {
     fn from(value: CPUMemory<T>) -> Self {
         Rc::new(RefCell::new(value))
     }
 }
 
 pub type SharedCPUMemory<T> = Rc<RefCell<CPUMemory<T>>>;
+

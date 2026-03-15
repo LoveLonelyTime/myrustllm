@@ -1,12 +1,32 @@
-#ifndef TENSOR_H
-#define TENSOR_H
+#ifndef __TENSOR_H__
+#define __TENSOR_H__
 
-#include <myrustllm-cpu.h>
+#include "myrustllm-cpu.h"
 #include <vector>
 
-#define TENSOR_PTR(ptr, ty, offset) reinterpret_cast<ty *>(ptr)[offset]
+template <uint8_t>
+struct dtype_to_type;
 
-inline size_t tensor_numel(CPUTensor tensor)
+template <>
+struct dtype_to_type<DT_F32> { using type = float; };
+
+template <>
+struct dtype_to_type<DT_F64> { using type = double; };
+
+template <>
+struct dtype_to_type<DT_I32> { using type = int32_t; };
+
+template <>
+struct dtype_to_type<DT_I64> { using type = int64_t; };
+
+
+template <typename T>
+inline T *tensor_data(CPUTensor &tensor)
+{
+    return reinterpret_cast<T *>(tensor.data);
+}
+
+inline size_t tensor_numel(CPUTensor &tensor)
 {
     size_t numel = 1;
     for (size_t dim = 0; dim < tensor.dims; dim++)
@@ -16,8 +36,7 @@ inline size_t tensor_numel(CPUTensor tensor)
     return numel;
 }
 
-#include <iostream>
-inline std::vector<size_t> tensor_linear2idx(CPUTensor tensor, size_t linear_idx)
+inline std::vector<size_t> tensor_linear2idx(CPUTensor &tensor, size_t linear_idx)
 {
     std::vector<size_t> idx(tensor.dims);
 
@@ -35,7 +54,7 @@ inline std::vector<size_t> tensor_linear2idx(CPUTensor tensor, size_t linear_idx
     return idx;
 }
 
-inline void tensor_next_idx(CPUTensor tensor, std::vector<size_t> &idx)
+inline void tensor_next_idx(CPUTensor &tensor, std::vector<size_t> &idx)
 {
     if (tensor.dims == 0)
     {
@@ -43,7 +62,7 @@ inline void tensor_next_idx(CPUTensor tensor, std::vector<size_t> &idx)
         return;
     }
     idx[tensor.dims - 1]++;
-    
+
     // Exclude 0 dim
     for (size_t dim = tensor.dims; dim > 1; dim--)
     {
@@ -59,7 +78,7 @@ inline void tensor_next_idx(CPUTensor tensor, std::vector<size_t> &idx)
     }
 }
 
-inline size_t tensor_idx2offset(CPUTensor tensor, std::vector<size_t> &idx)
+inline size_t tensor_idx2offset(CPUTensor &tensor, const std::vector<size_t> &idx)
 {
     size_t offset = 0;
     for (size_t dim = 0; dim < tensor.dims; dim++)
@@ -69,4 +88,4 @@ inline size_t tensor_idx2offset(CPUTensor tensor, std::vector<size_t> &idx)
     return offset;
 }
 
-#endif // TENSOR_H
+#endif // __TENSOR_H__

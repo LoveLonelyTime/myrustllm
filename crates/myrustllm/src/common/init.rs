@@ -1,97 +1,44 @@
-use crate::common::dtype::Scalar;
-use crate::common::{DType, Device, GenericTensor, Shape, Tensor};
-use crate::cpu::dynamic::CPUGenericTensor;
+use crate::common::{Shape, Tensor};
+use crate::common::{dtype::DTypeImpl, impls::Impl};
 
-impl GenericTensor {
-    // ================================================== ALLOC ==================================================
+use crate::common::io::TensorRawData;
 
-    pub fn alloc(shape: &Shape, dtype: DType, device: Device) -> Self {
-        match device {
-            Device::CPU => CPUGenericTensor::alloc(shape, dtype).into(),
-            _ => todo!(),
-        }
+pub trait TensorAllocInit<I: Impl>: DTypeImpl<I> {
+    fn init(shape: &Shape, device: &I::Device) -> Self::Prototype;
+}
+
+impl<I: Impl, TI: DTypeImpl<I> + TensorAllocInit<I>> Tensor<I, TI> {
+    pub fn alloc(shape: &Shape, device: &I::Device) -> Self {
+        Tensor::new(TI::init(shape, device))
     }
+}
 
-    pub fn alloc_like(tensor: &GenericTensor) -> Self {
-        GenericTensor::alloc(&tensor.shape(), tensor.dtype(), tensor.device())
+pub trait TensorZerosInit<I: Impl>: DTypeImpl<I> {
+    fn init(shape: &Shape, device: &I::Device) -> Self::Prototype;
+}
+
+impl<I: Impl, TI: DTypeImpl<I> + TensorZerosInit<I>> Tensor<I, TI> {
+    pub fn zeros(shape: &Shape, device: &I::Device) -> Self {
+        Tensor::new(TI::init(shape, device))
     }
+}
 
-    // ================================================== FILL ==================================================
+pub trait TensorOnesInit<I: Impl>: DTypeImpl<I> {
+    fn init(shape: &Shape, device: &I::Device) -> Self::Prototype;
+}
 
-    pub fn fill(shape: &Shape, val: Scalar, device: Device) -> Self {
-        match device {
-            Device::CPU => CPUGenericTensor::fill(shape, val).into(),
-            _ => todo!(),
-        }
+impl<I: Impl, TI: DTypeImpl<I> + TensorOnesInit<I>> Tensor<I, TI> {
+    pub fn ones(shape: &Shape, device: &I::Device) -> Self {
+        Tensor::new(TI::init(shape, device))
     }
+}
 
-    pub fn fill_(&mut self, val: Scalar) {
-        match self {
-            GenericTensor::CPUTensor(t) => t.fill_(val),
-            _ => todo!(),
-        }
-    }
+pub trait TensorRawDataInit<I: Impl>: DTypeImpl<I> {
+    fn init(data: impl Into<TensorRawData>, device: &I::Device) -> Self::Prototype;
+}
 
-    pub fn fill_like(tensor: &GenericTensor, val: Scalar) -> Self {
-        GenericTensor::fill(&tensor.shape(), val, tensor.device())
-    }
-
-    pub fn scalar(val: Scalar, device: Device) -> Self {
-        GenericTensor::fill(&Shape::scalar(), val, device)
-    }
-
-    pub fn zeros(shape: &Shape, dtype: DType, device: Device) -> Self {
-        match device {
-            Device::CPU => CPUGenericTensor::zeros(shape, dtype).into(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn zeros_(&mut self) {
-        match self {
-            GenericTensor::CPUTensor(t) => t.zeros_(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn zeros_like(tensor: &GenericTensor) -> Self {
-        GenericTensor::zeros(&tensor.shape(), tensor.dtype(), tensor.device())
-    }
-
-    pub fn ones(shape: &Shape, dtype: DType, device: Device) -> Self {
-        match device {
-            Device::CPU => CPUGenericTensor::ones(shape, dtype).into(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn ones_(&mut self) {
-        match self {
-            GenericTensor::CPUTensor(t) => t.ones_(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn ones_like(tensor: &GenericTensor) -> Self {
-        GenericTensor::ones(&tensor.shape(), tensor.dtype(), tensor.device())
-    }
-
-    // ================================================== NORMAL ==================================================
-    pub fn uniform(shape: &Shape, mean: f32, std: f32, dtype: DType, device: Device) -> Self {
-        match device {
-            Device::CPU => CPUGenericTensor::uniform(shape, mean, std, dtype).into(),
-            _ => todo!(),
-        }
-    }
-
-    pub fn uniform_(&mut self, mean: f32, std: f32) {
-        match self {
-            GenericTensor::CPUTensor(t) => t.uniform_(mean, std),
-            _ => todo!(),
-        }
-    }
-
-    pub fn uniform_like(tensor: &GenericTensor, mean: f32, std: f32) -> Self {
-        GenericTensor::uniform(&tensor.shape(), mean, std, tensor.dtype(), tensor.device())
+impl<I: Impl, TI: DTypeImpl<I> + TensorRawDataInit<I>> Tensor<I, TI> {
+    pub fn from_raw_data(data: impl Into<TensorRawData>, device: &I::Device) -> Self {
+        Tensor::new(TI::init(data, device))
     }
 }

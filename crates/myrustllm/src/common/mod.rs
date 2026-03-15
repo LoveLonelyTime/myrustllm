@@ -1,15 +1,14 @@
-pub mod tensor;
-pub mod shape;
-pub mod device;
 pub mod dtype;
-pub mod math;
-pub mod dynamic;
-pub mod autograd;
+pub mod impls;
 pub mod init;
+pub mod io;
+pub mod ops;
+pub mod shape;
+pub mod tensor;
 
-pub use shape::Shape;
-pub use device::Device;
 pub use dtype::DType;
+pub use dtype::DTypeImpl;
+pub use impls::Impl;
+pub use shape::Shape;
 pub use tensor::Tensor;
-pub use tensor::TensorMeta;
-pub use dynamic::GenericTensor;
+pub use tensor::TensorPrototype;

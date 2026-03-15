@@ -1,7 +1,5 @@
-pub mod tensor;
+pub mod impls;
 pub mod mem;
-pub mod slice;
-pub mod math;
-pub mod interface;
-pub mod dynamic;
+pub mod ops;
 pub mod init;
+pub mod interface;
