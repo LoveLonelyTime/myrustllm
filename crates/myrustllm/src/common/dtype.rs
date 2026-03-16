@@ -1,74 +1,55 @@
+//! MyRustLLM has two type system:
+//! - Dynamic types: These types are defined by DType (u8). Some dispatching system can identify dynamic types from DType ID.
+//! - Generic param types: These types are defined by generic params, which are used in rust-lang.
+
 use crate::common::{Impl, TensorPrototype};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum DType {
-    F32 = 0,
-    F64 = 1,
-    I32 = 2,
-    I64 = 3,
-}
+/// DType ID (u8).
+pub type DType = u8;
+pub const DTYPE_F32: DType = 0;
+pub const DTYPE_F64: DType = 1;
+pub const DTYPE_I32: DType = 2;
+pub const DTYPE_I64: DType = 3;
 
+/// Any type implements trait `DTypeOf` can derive a dynamic type.
 pub trait DTypeOf {
     const DTYPE: DType;
 }
 
-impl DTypeOf for f32 {
-    const DTYPE: DType = DType::F32;
-}
-
-impl DTypeOf for f64 {
-    const DTYPE: DType = DType::F64;
-}
-
-impl DTypeOf for i32 {
-    const DTYPE: DType = DType::I32;
-}
-
-impl DTypeOf for i64 {
-    const DTYPE: DType = DType::I64;
-}
-
-pub trait StdDType: 'static + Copy {
-    type RType: Copy;
-    const DTYPE: DType;
-}
+// Generic param types
 
 #[derive(Debug, Clone, Copy)]
 pub struct F32;
 
-impl StdDType for F32 {
-    type RType = f32;
-    const DTYPE: DType = DType::F32;
+impl DTypeOf for F32 {
+    const DTYPE: DType = DTYPE_F32;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct F64;
 
-impl StdDType for F64 {
-    type RType = f64;
-    const DTYPE: DType = DType::F64;
+impl DTypeOf for F64 {
+    const DTYPE: DType = DTYPE_F64;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct I32;
 
-impl StdDType for I32 {
-    type RType = i32;
-    const DTYPE: DType = DType::I32;
+impl DTypeOf for I32 {
+    const DTYPE: DType = DTYPE_I32;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct I64;
 
-impl StdDType for I64 {
-    type RType = i64;
-    const DTYPE: DType = DType::I64;
+impl DTypeOf for I64 {
+    const DTYPE: DType = DTYPE_I64;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Any;
 
-pub trait DTypeImpl<I: Impl>: Sized {
-    type Prototype: TensorPrototype;
+/// Trait `DTypeImpl` associate a pair (Impl, Generic param type) with a tensor prototype.
+pub trait DTypeImpl<I: Impl> {
+    type Prototype: TensorPrototype<I>;
 }

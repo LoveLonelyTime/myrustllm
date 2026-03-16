@@ -3,10 +3,11 @@
 //! All operations will not copy data, but just reinterpret the original data.
 //!
 //! List:
-//! - TensorViewImpl: view
-//! - TensorSliceImpl: slice
-//! - TensorBroadcastImpl: broadcast_to
+//! - TensorView: view
+//! - TensorSlice: slice
+//! - TensorBroadcast: broadcast_to
 
+use crate::common::shape::broadcast_shape;
 use crate::common::{DTypeImpl, Impl, Shape, Tensor, TensorPrototype};
 use std::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
@@ -86,12 +87,12 @@ macro_rules! idx {
     };
 }
 
-/// Tensor view implement.
-pub trait TensorViewImpl<I: Impl>: DTypeImpl<I> {
+/// Tensor view implementation.
+pub trait TensorView<I: Impl>: DTypeImpl<I> {
     fn view(src: &Self::Prototype, new_shape: &Shape) -> Option<Self::Prototype>;
 }
 
-impl<I: Impl, Src: DTypeImpl<I> + TensorViewImpl<I>> Tensor<I, Src> {
+impl<I: Impl, Src: DTypeImpl<I> + TensorView<I>> Tensor<I, Src> {
     /// Return a new tensor with the same data as the tensor `&self` but of a different shape `new_shape`.
     ///
     /// For a tensor to be viewed, the new view size must be compatible with its original size and stride.
@@ -128,12 +129,12 @@ impl<I: Impl, Src: DTypeImpl<I> + TensorViewImpl<I>> Tensor<I, Src> {
     }
 }
 
-/// Tensor slice implement.
-pub trait TensorSliceImpl<I: Impl>: DTypeImpl<I> {
+/// Tensor slice implementation.
+pub trait TensorSlice<I: Impl>: DTypeImpl<I> {
     fn slice(src: &Self::Prototype, indices: &[TensorIndex]) -> Self::Prototype;
 }
 
-impl<I: Impl, Src: DTypeImpl<I> + TensorSliceImpl<I>> Tensor<I, Src> {
+impl<I: Impl, Src: DTypeImpl<I> + TensorSlice<I>> Tensor<I, Src> {
     /// Extract a new slice(view) derived from `&self`.
     ///
     /// The returned CPU tensor will share the same memory with `&self`.
@@ -162,12 +163,12 @@ impl<I: Impl, Src: DTypeImpl<I> + TensorSliceImpl<I>> Tensor<I, Src> {
     }
 }
 
-/// Tensor broadcast implement.
-pub trait TensorBroadcastImpl<I: Impl>: DTypeImpl<I> {
+/// Tensor broadcast implementation.
+pub trait TensorBroadcast<I: Impl>: DTypeImpl<I> {
     fn broadcast_to(src: &Self::Prototype, target_shape: &Shape) -> Option<Self::Prototype>;
 }
 
-impl<I: Impl, Src: DTypeImpl<I> + TensorBroadcastImpl<I>> Tensor<I, Src> {
+impl<I: Impl, Src: DTypeImpl<I> + TensorBroadcast<I>> Tensor<I, Src> {
     /// Broadcast `&self` to the shape `target_shape`.
     ///
     /// Broadcasting doesn't mean allocating new memory, but only creates a new view on the existing tensor.
@@ -194,13 +195,13 @@ impl<I: Impl, Src: DTypeImpl<I> + TensorBroadcastImpl<I>> Tensor<I, Src> {
 /// Try broadcast two tensor prototypes mutually.
 pub fn broadcast_prot<
     I: Impl,
-    Lhs: DTypeImpl<I> + TensorBroadcastImpl<I>,
-    Rhs: DTypeImpl<I> + TensorBroadcastImpl<I>,
+    Lhs: DTypeImpl<I> + TensorBroadcast<I>,
+    Rhs: DTypeImpl<I> + TensorBroadcast<I>,
 >(
     lhs: &Lhs::Prototype,
     rhs: &Rhs::Prototype,
 ) -> Option<(Lhs::Prototype, Rhs::Prototype)> {
-    let target_shape: Shape = Shape::broadcast_shape(&lhs.shape(), &rhs.shape())?;
+    let target_shape: Shape = broadcast_shape(&lhs.shape(), &rhs.shape())?;
     Some((
         Lhs::broadcast_to(lhs, &target_shape)?,
         Rhs::broadcast_to(rhs, &target_shape)?,
@@ -210,8 +211,8 @@ pub fn broadcast_prot<
 /// Try broadcast two tensors mutually.
 pub fn broadcast<
     I: Impl,
-    Lhs: DTypeImpl<I> + TensorBroadcastImpl<I>,
-    Rhs: DTypeImpl<I> + TensorBroadcastImpl<I>,
+    Lhs: DTypeImpl<I> + TensorBroadcast<I>,
+    Rhs: DTypeImpl<I> + TensorBroadcast<I>,
 >(
     lhs: &Tensor<I, Lhs>,
     rhs: &Tensor<I, Rhs>,

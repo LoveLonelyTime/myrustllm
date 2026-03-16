@@ -1,3 +1,3 @@
 pub trait Impl {
-    type Device;
+    type Device: Default;
 }

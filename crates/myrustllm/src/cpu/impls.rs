@@ -2,11 +2,12 @@ use std::{cell::RefCell, os::raw::c_void, rc::Rc};
 
 use crate::{
     common::{
-        DType, Shape,
-        dtype::{Any, DTypeImpl, F32, F64, I32, I64, StdDType},
+        DType, DTypeOf, Shape,
+        dtype::{Any, DTYPE_F32, DTypeImpl, F32, F64, I32, I64},
         impls::Impl,
         init::{TensorAllocInit, TensorRawDataInit},
         io::TensorRawData,
+        shape::create_contiguous_stride,
         tensor::TensorPrototype,
     },
     cpu::{
@@ -29,6 +30,13 @@ pub struct CPUTensorPrototype<T> {
     offset: usize,
 }
 
+// Earse-Type
+#[derive(Clone)]
+pub struct CPUTensorAnyPrototype {
+    inner: CPUTensorPrototype<u8>,
+    dtype: DType,
+}
+
 impl<T> CPUTensorPrototype<T> {
     pub fn new(data: SharedCPUMemory<T>, shape: &Shape, stride: &Shape, offset: usize) -> Self {
         CPUTensorPrototype {
@@ -43,7 +51,7 @@ impl<T> CPUTensorPrototype<T> {
         CPUTensorPrototype {
             data: Rc::new(RefCell::new(CPUMemory::new(shape.numel()))),
             shape: shape.clone(),
-            stride: Shape::create_contiguous_stride(shape),
+            stride: create_contiguous_stride(shape),
             offset: 0,
         }
     }
@@ -61,58 +69,68 @@ impl<T> CPUTensorPrototype<T> {
     }
 }
 
-// For StdRType
-impl<T: StdDType> TensorPrototype for CPUTensorPrototype<T::RType> {
-    fn shape(&self) -> Shape {
-        self.shape.clone()
-    }
+macro_rules! register_tensor_prot {
+    ($dt: ty, $rt: ty) => {
+        impl TensorPrototype<CPU> for CPUTensorPrototype<$rt> {
+            fn shape(&self) -> Shape {
+                self.shape.clone()
+            }
 
-    fn dtype(&self) -> DType {
-        T::DTYPE
-    }
-}
-
-impl<T: StdRType> IntoInterface for CPUTensorPrototype<T> {
-    /// Wrap `CPUTensor<T>` into an interface struct.
-    unsafe fn into_interface(&self) -> interface::CPUTensor {
-        interface::CPUTensor {
-            data: unsafe { self.data.borrow_mut().as_mut_ptr().add(self.offset) as *mut u8 },
-            shape: self.shape.as_ptr(),
-            stride: self.stride.as_ptr(),
-            dims: self.dims(),
-            dtype: T::DTYPE as interface::DType,
+            fn dtype(&self) -> DType {
+                <$dt as DTypeOf>::DTYPE
+            }
+            
+            fn device(&self) -> <CPU as Impl>::Device {
+                Default::default()
+            }
         }
-    }
-}
 
-// For stdDType
-impl<T: StdDType> DTypeImpl<CPU> for T {
-    type Prototype = CPUTensorPrototype<T::RType>;
-}
-
-// Earse-Type
-#[derive(Clone)]
-pub struct CPUTensorAnyPrototype {
-    inner: CPUTensorPrototype<u8>,
-    dtype: DType,
-}
-
-impl<T: StdRType> From<CPUTensorPrototype<T>> for CPUTensorAnyPrototype {
-    fn from(value: CPUTensorPrototype<T>) -> Self {
-        CPUTensorAnyPrototype {
-            inner: unsafe { std::mem::transmute(value) },
-            dtype: T::DTYPE,
+        impl DTypeImpl<CPU> for $dt {
+            type Prototype = CPUTensorPrototype<$rt>;
         }
-    }
+
+        impl From<CPUTensorPrototype<$rt>> for CPUTensorAnyPrototype {
+            fn from(value: CPUTensorPrototype<$rt>) -> Self {
+                CPUTensorAnyPrototype {
+                    inner: unsafe { std::mem::transmute(value) },
+                    dtype: <$dt as DTypeOf>::DTYPE,
+                }
+            }
+        }
+
+        impl IntoInterface for CPUTensorPrototype<$rt> {
+            /// Wrap `CPUTensor<T>` into an interface struct.
+            unsafe fn into_interface(&self) -> interface::CPUTensor {
+                interface::CPUTensor {
+                    data: unsafe {
+                        self.data.borrow_mut().as_mut_ptr().add(self.offset) as *mut u8
+                    },
+                    shape: self.shape.as_ptr(),
+                    stride: self.stride.as_ptr(),
+                    dims: self.dims(),
+                    dtype: <$dt as DTypeOf>::DTYPE,
+                }
+            }
+        }
+    };
 }
 
-impl TensorPrototype for CPUTensorAnyPrototype {
+register_tensor_prot!(F32, f32);
+register_tensor_prot!(F64, f64);
+register_tensor_prot!(I32, i32);
+register_tensor_prot!(I64, i64);
+
+impl TensorPrototype<CPU> for CPUTensorAnyPrototype {
     fn shape(&self) -> Shape {
         self.inner.shape.clone()
     }
 
     fn dtype(&self) -> DType {
         self.dtype
+    }
+
+    fn device(&self) -> <CPU as Impl>::Device {
+        Default::default()
     }
 }
 
@@ -134,7 +152,7 @@ impl IntoInterface for CPUTensorAnyPrototype {
             shape: self.inner.shape.as_ptr(),
             stride: self.inner.stride.as_ptr(),
             dims: self.dims(),
-            dtype: self.dtype as interface::DType,
+            dtype: self.dtype,
         }
     }
 }

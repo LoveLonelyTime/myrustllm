@@ -1,14 +1,16 @@
 use crate::{
     common::{
-        Shape,
-        dtype::{DTypeImpl, StdDType},
-        ops::view::{TensorBroadcastImpl, TensorIndex, TensorSliceImpl, TensorViewImpl},
+        DTypeImpl, Shape,
+        ops::view::{TensorBroadcast, TensorIndex, TensorSlice, TensorView},
         tensor::TensorPrototype,
     },
     cpu::impls::{CPU, CPUTensorPrototype},
 };
 
-impl<T: StdDType> TensorViewImpl<CPU> for T {
+impl<T: DTypeImpl<CPU, Prototype = CPUTensorPrototype<U>>, U> TensorView<CPU> for T
+where
+    CPUTensorPrototype<U>: TensorPrototype<CPU>,
+{
     fn view(src: &Self::Prototype, new_shape: &Shape) -> Option<Self::Prototype> {
         let mut new_shape_v: Vec<usize> = new_shape.as_ref().into();
 
@@ -112,7 +114,10 @@ impl<T: StdDType> TensorViewImpl<CPU> for T {
     }
 }
 
-impl<T: StdDType> TensorSliceImpl<CPU> for T {
+impl<T: DTypeImpl<CPU, Prototype = CPUTensorPrototype<U>>, U> TensorSlice<CPU> for T
+where
+    CPUTensorPrototype<U>: TensorPrototype<CPU>,
+{
     fn slice(
         src: &Self::Prototype,
         indices: &[crate::common::ops::view::TensorIndex],
@@ -328,7 +333,10 @@ impl<T: StdDType> TensorSliceImpl<CPU> for T {
     }
 }
 
-impl<T: StdDType> TensorBroadcastImpl<CPU> for T {
+impl<T: DTypeImpl<CPU, Prototype = CPUTensorPrototype<U>>, U> TensorBroadcast<CPU> for T
+where
+    CPUTensorPrototype<U>: TensorPrototype<CPU>,
+{
     fn broadcast_to(src: &Self::Prototype, target_shape: &Shape) -> Option<Self::Prototype> {
         if target_shape.len() < src.dims() {
             return None;

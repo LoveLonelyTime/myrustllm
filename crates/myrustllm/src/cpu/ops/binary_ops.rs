@@ -1,9 +1,12 @@
 use crate::{
     common::{
-        dtype::{DTypeImpl, StdDType},
+        dtype::DTypeImpl,
         init::TensorAllocInit,
         ops::{
-            binary_ops::TensorAddImpl, cast::TensorCastImpl, promote::Promote, view::broadcast_prot,
+            binary_ops::TensorAdd,
+            cast::TensorCast,
+            promote::Promote,
+            view::{TensorBroadcast, broadcast_prot},
         },
         tensor::TensorPrototype,
     },
@@ -13,17 +16,26 @@ use crate::{
     },
 };
 
-impl<Lhs: StdDType + Promote<Rhs, Output: StdDType>, Rhs: StdDType> TensorAddImpl<CPU, Rhs>
-    for Lhs
+impl<
+    Lhs: DTypeImpl<CPU, Prototype: IntoInterface>
+        + Promote<
+            Rhs,
+            Output: DTypeImpl<CPU, Prototype: IntoInterface>
+                        + TensorBroadcast<CPU>
+                        + TensorAllocInit<CPU>,
+        >,
+    Rhs: DTypeImpl<CPU, Prototype: IntoInterface>,
+> TensorAdd<CPU, Rhs> for Lhs
 {
     type Output = <Lhs as Promote<Rhs>>::Output;
+
     fn add(
         lhs: &Self::Prototype,
         rhs: &<Rhs as DTypeImpl<CPU>>::Prototype,
     ) -> <Self::Output as DTypeImpl<CPU>>::Prototype {
         let (lhs, rhs) = broadcast_prot::<CPU, Self::Output, Self::Output>(
-            &<Lhs as TensorCastImpl<CPU, Self::Output>>::cast(lhs),
-            &<Rhs as TensorCastImpl<CPU, Self::Output>>::cast(rhs),
+            &<Lhs as TensorCast<CPU, Self::Output>>::cast(lhs),
+            &<Rhs as TensorCast<CPU, Self::Output>>::cast(rhs),
         )
         .expect(&format!(
             "Two tensors with shapes ({:?}, {:?}) cannot be broadcast.",

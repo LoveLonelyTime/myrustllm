@@ -27,13 +27,19 @@ pub struct AutoGradPrototype<I: Impl, TI: DTypeImpl<I>, GI: DTypeImpl<I>> {
     output_nr: usize,
 }
 
-impl<I: Impl, TI: DTypeImpl<I>, GI: DTypeImpl<I>> TensorPrototype for AutoGradPrototype<I, TI, GI> {
+impl<I: Impl, TI: DTypeImpl<I>, GI: DTypeImpl<I>> TensorPrototype<Autograd<I, GI>>
+    for AutoGradPrototype<I, TI, GI>
+{
     fn shape(&self) -> Shape {
         self.tensor.shape()
     }
 
     fn dtype(&self) -> DType {
         self.tensor.dtype()
+    }
+
+    fn device(&self) -> <I as Impl>::Device {
+        self.tensor.device()
     }
 }
 

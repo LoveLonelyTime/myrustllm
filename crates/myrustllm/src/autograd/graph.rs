@@ -12,7 +12,7 @@ use crate::{
         dtype::DTypeImpl,
         impls::Impl,
         init::TensorZerosInit,
-        ops::binary_ops::TensorAddImpl,
+        ops::binary_ops::TensorAdd,
         tensor::{TensorMeta, TensorPrototype},
     },
 };
@@ -52,7 +52,7 @@ pub struct GraphNode<I: Impl, TI: DTypeImpl<I>, GI: DTypeImpl<I>>(
 impl<
     I: Impl,
     TI: DTypeImpl<I>,
-    GI: DTypeImpl<I> + TensorZerosInit<I> + TensorAddImpl<I, GI, Output = GI>,
+    GI: DTypeImpl<I> + TensorZerosInit<I> + TensorAdd<I, GI, Output = GI>,
 > GraphNode<I, TI, GI>
 {
     fn init_grad(&mut self) {
@@ -94,7 +94,7 @@ struct GraphNodeBase<I: Impl, TI: DTypeImpl<I>, GI: DTypeImpl<I>> {
 impl<
     I: Impl,
     TI: DTypeImpl<I>,
-    GI: DTypeImpl<I> + TensorZerosInit<I> + TensorAddImpl<I, GI, Output = GI>,
+    GI: DTypeImpl<I> + TensorZerosInit<I> + TensorAdd<I, GI, Output = GI>,
 > GraphNodeBase<I, TI, GI>
 {
     /// Init `input_grad` with zero grad.
@@ -168,7 +168,7 @@ impl<
 impl<
     I: Impl,
     TI: DTypeImpl<I>,
-    GI: DTypeImpl<I> + TensorZerosInit<I> + TensorAddImpl<I, GI, Output = GI>,
+    GI: DTypeImpl<I> + TensorZerosInit<I> + TensorAdd<I, GI, Output = GI>,
 > Tensor<Autograd<I, GI>, TI>
 {
     pub fn backward(&mut self, init_grad: &Tensor<Autograd<I, GI>, GI>, retain_graph: bool) {

@@ -1,0 +1,36 @@
+{
+    "name": "Ubuntu Rust/C++ Dev Environment",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // Rust
+                "rust-lang.rust-analyzer",
+                "tamasfe.even-better-toml",
+                // C++
+                "ms-vscode.cpptools",
+                "ms-vscode.cmake-tools",
+                // Others
+                "github.copilot",
+                "eamodio.gitlens",
+                "ms-azuretools.vscode-docker"
+            ]
+        }
+    },
+    // User
+    "remoteUser": "root",
+    // Mounts
+    "mounts": [
+        // "source=${env:HOME}${env:USERPROFILE}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached"
+    ],
+    // Check
+    "postCreateCommand": "rustc --version && gcc --version && cmake --version",
+    // Features
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/common-utils:1": {}
+    }
+}

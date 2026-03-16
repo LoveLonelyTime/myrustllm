@@ -1,10 +1,10 @@
 use crate::{
     autograd::impls::Autograd,
-    common::{dtype::DTypeImpl, impls::Impl, ops::binary_ops::TensorAddImpl},
+    common::{dtype::DTypeImpl, impls::Impl, ops::binary_ops::TensorAdd},
 };
 
-impl<I: Impl, GI: DTypeImpl<I>, TI: DTypeImpl<I> + TensorAddImpl<I, Rhs>, Rhs: DTypeImpl<I>>
-    TensorAddImpl<Autograd<I, GI>, Rhs> for TI
+impl<I: Impl, GI: DTypeImpl<I>, TI: DTypeImpl<I> + TensorAdd<I, Rhs>, Rhs: DTypeImpl<I>>
+    TensorAdd<Autograd<I, GI>, Rhs> for TI
 {
     type Output = TI::Output;
     fn add(

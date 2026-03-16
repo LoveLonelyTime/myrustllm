@@ -2,6 +2,7 @@
 
 use crate::common::dtype::{F32, F64, I32, I64};
 
+/// Trait `Promote` declares that `Self` and `Rhs` should promote to `Promote<Rhs>::Output` when they are calculating.
 pub trait Promote<Rhs> {
     type Output;
 }

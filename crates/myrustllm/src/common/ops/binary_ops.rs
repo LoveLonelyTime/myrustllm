@@ -1,15 +1,15 @@
 //! This mod (binary ops) defines binary operations.
 //!
 //! List:
-//! - TensorAddImpl: +
-//! - TensorSubImpl: -
-//! - TensorMulImpl: *
-//! - TensorDivImpl: /
+//! - TensorAdd: +
+//! - TensorSub: -
+//! - TensorMul: *
+//! - TensorDiv: /
 
 use crate::common::{DTypeImpl, Impl, Tensor};
 
-/// Tensor add implement.
-pub trait TensorAddImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
+/// Tensor add implementation.
+pub trait TensorAdd<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     type Output: DTypeImpl<I>;
     fn add(
         lhs: &Self::Prototype,
@@ -17,7 +17,7 @@ pub trait TensorAddImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     ) -> <Self::Output as DTypeImpl<I>>::Prototype;
 }
 
-impl<I: Impl, Lhs: DTypeImpl<I> + TensorAddImpl<I, Rhs>, Rhs: DTypeImpl<I>>
+impl<I: Impl, Lhs: DTypeImpl<I> + TensorAdd<I, Rhs>, Rhs: DTypeImpl<I>>
     std::ops::Add<&Tensor<I, Rhs>> for &Tensor<I, Lhs>
 {
     type Output = Tensor<I, Lhs::Output>;
@@ -26,8 +26,8 @@ impl<I: Impl, Lhs: DTypeImpl<I> + TensorAddImpl<I, Rhs>, Rhs: DTypeImpl<I>>
     }
 }
 
-/// Tensor sub implement.
-pub trait TensorSubImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
+/// Tensor sub implementation.
+pub trait TensorSub<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     type Output: DTypeImpl<I>;
     fn sub(
         lhs: &Self::Prototype,
@@ -35,7 +35,7 @@ pub trait TensorSubImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     ) -> <Self::Output as DTypeImpl<I>>::Prototype;
 }
 
-impl<I: Impl, Lhs: DTypeImpl<I> + TensorSubImpl<I, Rhs>, Rhs: DTypeImpl<I>>
+impl<I: Impl, Lhs: DTypeImpl<I> + TensorSub<I, Rhs>, Rhs: DTypeImpl<I>>
     std::ops::Sub<&Tensor<I, Rhs>> for &Tensor<I, Lhs>
 {
     type Output = Tensor<I, Lhs::Output>;
@@ -44,8 +44,8 @@ impl<I: Impl, Lhs: DTypeImpl<I> + TensorSubImpl<I, Rhs>, Rhs: DTypeImpl<I>>
     }
 }
 
-/// Tensor mul implement.
-pub trait TensorMulImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
+/// Tensor mul implementation.
+pub trait TensorMul<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     type Output: DTypeImpl<I>;
     fn mul(
         lhs: &Self::Prototype,
@@ -53,7 +53,7 @@ pub trait TensorMulImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     ) -> <Self::Output as DTypeImpl<I>>::Prototype;
 }
 
-impl<I: Impl, Lhs: DTypeImpl<I> + TensorMulImpl<I, Rhs>, Rhs: DTypeImpl<I>>
+impl<I: Impl, Lhs: DTypeImpl<I> + TensorMul<I, Rhs>, Rhs: DTypeImpl<I>>
     std::ops::Mul<&Tensor<I, Rhs>> for &Tensor<I, Lhs>
 {
     type Output = Tensor<I, Lhs::Output>;
@@ -62,8 +62,8 @@ impl<I: Impl, Lhs: DTypeImpl<I> + TensorMulImpl<I, Rhs>, Rhs: DTypeImpl<I>>
     }
 }
 
-/// Tensor div implement.
-pub trait TensorDivImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
+/// Tensor div implementation.
+pub trait TensorDiv<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     type Output: DTypeImpl<I>;
     fn div(
         lhs: &Self::Prototype,
@@ -71,7 +71,7 @@ pub trait TensorDivImpl<I: Impl, Rhs: DTypeImpl<I>>: DTypeImpl<I> {
     ) -> <Self::Output as DTypeImpl<I>>::Prototype;
 }
 
-impl<I: Impl, Lhs: DTypeImpl<I> + TensorDivImpl<I, Rhs>, Rhs: DTypeImpl<I>>
+impl<I: Impl, Lhs: DTypeImpl<I> + TensorDiv<I, Rhs>, Rhs: DTypeImpl<I>>
     std::ops::Div<&Tensor<I, Rhs>> for &Tensor<I, Lhs>
 {
     type Output = Tensor<I, Lhs::Output>;

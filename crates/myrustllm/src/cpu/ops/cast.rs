@@ -1,22 +1,31 @@
 use crate::{
+    autograd::init,
     common::{
         Shape, Tensor,
-        dtype::{Any, DTypeImpl, StdDType, StdRType},
-        ops::{cast::{TensorCastImpl, TensorCopyImpl, TensorReshapeImpl}, promote::Promote},
+        dtype::{Any, DTypeImpl},
+        init::TensorAllocInit,
+        ops::{
+            cast::{TensorCast, TensorCopy, TensorReshape},
+            promote::Promote,
+        },
         tensor::TensorPrototype,
     },
     cpu::{
-        impls::{CPU, CPUTensorAnyPrototype},
+        impls::{CPU, CPUTensorAnyPrototype, CPUTensorPrototype},
         interface::{self, IntoInterface},
     },
 };
 
-use crate::common::ops::view::TensorBroadcastImpl;
-use crate::common::ops::view::TensorViewImpl;
+use crate::common::ops::view::TensorBroadcast;
+use crate::common::ops::view::TensorView;
 
-impl<T: StdDType, Dst: StdDType> TensorCastImpl<CPU, Dst> for T {
+impl<
+    T: DTypeImpl<CPU, Prototype: IntoInterface>,
+    Dst: DTypeImpl<CPU, Prototype: IntoInterface> + TensorAllocInit<CPU>,
+> TensorCast<CPU, Dst> for T
+{
     fn cast(src: &Self::Prototype) -> <Dst as DTypeImpl<CPU>>::Prototype {
-        let out = <Dst as DTypeImpl<CPU>>::Prototype::alloc(&src.shape());
+        let out = <Dst as TensorAllocInit<CPU>>::init(&src.shape(), &());
         unsafe {
             interface::cpu_tensor_cast(out.into_interface(), src.into_interface());
         }
@@ -24,30 +33,37 @@ impl<T: StdDType, Dst: StdDType> TensorCastImpl<CPU, Dst> for T {
     }
 }
 
-impl<Dst: StdDType> TensorCastImpl<CPU, Dst> for Any {
-    fn cast(src: &Self::Prototype) -> <Dst as DTypeImpl<CPU>>::Prototype {
-        let out = <Dst as DTypeImpl<CPU>>::Prototype::alloc(&src.shape());
-        unsafe {
-            interface::cpu_tensor_cast(out.into_interface(), src.into_interface());
-        }
-        out
-    }
-}
+// impl<Dst: DTypeImpl<CPU, Prototype: IntoInterface> + TensorAllocInit<CPU>> TensorCastImpl<CPU, Dst>
+//     for Any
+// {
+//     fn cast(src: &Self::Prototype) -> <Dst as DTypeImpl<CPU>>::Prototype {
+//         let out = <Dst as TensorAllocInit<CPU>>::init(&src.shape(), &());
+//         unsafe {
+//             interface::cpu_tensor_cast(out.into_interface(), src.into_interface());
+//         }
+//         out
+//     }
+// }
 
-impl<Src: StdDType> TensorCastImpl<CPU, Any> for Src {
+impl<Src: DTypeImpl<CPU, Prototype: Into<<Any as DTypeImpl<CPU>>::Prototype> + Clone>>
+    TensorCast<CPU, Any> for Src
+{
     fn cast(src: &Self::Prototype) -> <Any as DTypeImpl<CPU>>::Prototype {
-        <Any as DTypeImpl<CPU>>::Prototype::from(src.clone())
+        src.clone().into()
     }
 }
 
-impl<Dst: StdDType, Src: StdDType> TensorCopyImpl<CPU, Src> for Dst {
+impl<
+    Dst: DTypeImpl<CPU, Prototype: IntoInterface>,
+    Src: DTypeImpl<CPU, Prototype: IntoInterface> + TensorBroadcast<CPU> + TensorCast<CPU, Dst>,
+> TensorCopy<CPU, Src> for Dst
+{
     fn copy(dst: &mut Self::Prototype, src: &<Src as DTypeImpl<CPU>>::Prototype) {
-        let src = Dst::broadcast_to(&<Src as TensorCastImpl<CPU, Dst>>::cast(src), &dst.shape())
-            .expect(&format!(
-                "Src with shape {:?} cannot broadcast to shape {:?} of dst.",
-                src.shape(),
-                dst.shape()
-            ));
+        let src = Src::cast(&Src::broadcast_to(src, &dst.shape()).expect(&format!(
+            "Src with shape {:?} cannot broadcast to shape {:?} of dst.",
+            src.shape(),
+            dst.shape()
+        )));
 
         unsafe {
             interface::cpu_tensor_copy(dst.into_interface(), src.into_interface());
@@ -55,7 +71,9 @@ impl<Dst: StdDType, Src: StdDType> TensorCopyImpl<CPU, Src> for Dst {
     }
 }
 
-impl<Src: StdDType> TensorReshapeImpl<CPU> for Src {
+impl<Src: DTypeImpl<CPU> + TensorView<CPU> + TensorAllocInit<CPU> + TensorCopy<CPU, Src>>
+    TensorReshape<CPU> for Src
+{
     fn reshape(src: &Self::Prototype, new_shape: &Shape) -> Self::Prototype {
         // Try view
         if let Some(t) = Src::view(src, new_shape) {
@@ -98,8 +116,8 @@ impl<Src: StdDType> TensorReshapeImpl<CPU> for Src {
         );
 
         // Copy
-        let mut out = Self::Prototype::alloc(&new_shape_v.into());
-        <Src as TensorCopyImpl<CPU, Src>>::copy(&mut out, src);
+        let mut out = <Src as TensorAllocInit<CPU>>::init(&new_shape_v.into(), &());
+        <Src as TensorCopy<CPU, Src>>::copy(&mut out, src);
 
         out
     }
