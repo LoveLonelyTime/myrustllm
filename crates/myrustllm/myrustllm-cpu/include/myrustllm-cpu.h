@@ -67,6 +67,11 @@ extern "C"
     __MYRUSTLLM_API__ void cpu_tensor_copy(CPUTensor dst, CPUTensor src);
 
     __MYRUSTLLM_API__ void cpu_tensor_add(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
+    __MYRUSTLLM_API__ void cpu_tensor_sub(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
+    __MYRUSTLLM_API__ void cpu_tensor_mul(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
+    __MYRUSTLLM_API__ void cpu_tensor_div(CPUTensor out, CPUTensor lhs, CPUTensor rhs);
+
+    __MYRUSTLLM_API__ void cpu_tensor_reduce_add(CPUTensor lhs, CPUTensor rhs, size_t batch_dims);
 
 #ifdef __cplusplus
 }

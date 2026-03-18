@@ -13,7 +13,7 @@ use crate::{
         impls::Impl,
         init::TensorZerosInit,
         ops::binary_ops::TensorAdd,
-        tensor::{TensorMeta, TensorPrototype},
+        tensor::{TensorMetadata, TensorPrototype},
     },
 };
 
@@ -86,7 +86,7 @@ struct GraphNodeBase<I: Impl, TI: DTypeImpl<I>, GI: DTypeImpl<I>> {
     op: Option<Box<dyn OpGrad<I, TI, GI>>>,
     next_nodes: Vec<(Option<GraphNode<I, TI, GI>>, usize)>,
     input_grad: Vec<Option<Tensor<Autograd<I, GI>, GI>>>,
-    output_metas: Vec<TensorMeta<I>>,
+    output_metas: Vec<TensorMetadata<I>>,
     grad_slot: Vec<Weak<RefCell<GradSlot<I, GI>>>>,
     cnt: usize,
 }

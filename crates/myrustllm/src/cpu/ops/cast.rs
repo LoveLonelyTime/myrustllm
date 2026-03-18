@@ -1,31 +1,31 @@
-use crate::{
-    autograd::init,
-    common::{
-        Shape, Tensor,
-        dtype::{Any, DTypeImpl},
-        init::TensorAllocInit,
-        ops::{
-            cast::{TensorCast, TensorCopy, TensorReshape},
-            promote::Promote,
-        },
-        tensor::TensorPrototype,
-    },
-    cpu::{
-        impls::{CPU, CPUTensorAnyPrototype, CPUTensorPrototype},
-        interface::{self, IntoInterface},
-    },
+use crate::common::init::TensorAllocInit;
+use crate::common::ops::{
+    cast::{TensorCast, TensorCopy, TensorReshape},
+    view::{TensorBroadcast, TensorView},
 };
+use crate::common::{DTypeImpl, DTypeOf, Shape, TensorPrototype};
+use crate::cpu::impls::{CPU, CPUTensorPrototype};
+use crate::cpu::interface;
+use crate::cpu::interface::IntoInterface;
 
-use crate::common::ops::view::TensorBroadcast;
-use crate::common::ops::view::TensorView;
-
+// CPUTensorPrototype<M> <- cast -> CPUTensorPrototype<N>
 impl<
-    T: DTypeImpl<CPU, Prototype: IntoInterface>,
-    Dst: DTypeImpl<CPU, Prototype: IntoInterface> + TensorAllocInit<CPU>,
+    T: DTypeImpl<CPU, Prototype = CPUTensorPrototype<M>> + DTypeOf,
+    Dst: DTypeImpl<CPU, Prototype = CPUTensorPrototype<N>> + TensorAllocInit<CPU> + DTypeOf,
+    M,
+    N,
 > TensorCast<CPU, Dst> for T
+where
+    T::Prototype: TensorPrototype<CPU>,
+    Dst::Prototype: TensorPrototype<CPU>,
 {
     fn cast(src: &Self::Prototype) -> <Dst as DTypeImpl<CPU>>::Prototype {
-        let out = <Dst as TensorAllocInit<CPU>>::init(&src.shape(), &());
+        // If the source and destination data types are the same, we can simply transmute the tensor prototype without copying data.
+        if <T as DTypeOf>::DTYPE == <Dst as DTypeOf>::DTYPE {
+            return unsafe { std::mem::transmute(src.clone()) };
+        }
+
+        let out = <Dst as TensorAllocInit<CPU>>::init(&src.shape(), &Default::default());
         unsafe {
             interface::cpu_tensor_cast(out.into_interface(), src.into_interface());
         }
@@ -33,37 +33,17 @@ impl<
     }
 }
 
-// impl<Dst: DTypeImpl<CPU, Prototype: IntoInterface> + TensorAllocInit<CPU>> TensorCastImpl<CPU, Dst>
-//     for Any
-// {
-//     fn cast(src: &Self::Prototype) -> <Dst as DTypeImpl<CPU>>::Prototype {
-//         let out = <Dst as TensorAllocInit<CPU>>::init(&src.shape(), &());
-//         unsafe {
-//             interface::cpu_tensor_cast(out.into_interface(), src.into_interface());
-//         }
-//         out
-//     }
-// }
-
-impl<Src: DTypeImpl<CPU, Prototype: Into<<Any as DTypeImpl<CPU>>::Prototype> + Clone>>
-    TensorCast<CPU, Any> for Src
-{
-    fn cast(src: &Self::Prototype) -> <Any as DTypeImpl<CPU>>::Prototype {
-        src.clone().into()
-    }
-}
-
 impl<
-    Dst: DTypeImpl<CPU, Prototype: IntoInterface>,
-    Src: DTypeImpl<CPU, Prototype: IntoInterface> + TensorBroadcast<CPU> + TensorCast<CPU, Dst>,
+    Dst: DTypeImpl<CPU, Prototype: IntoInterface> + TensorBroadcast<CPU> + DTypeOf,
+    Src: DTypeImpl<CPU> + TensorCast<CPU, Dst>,
 > TensorCopy<CPU, Src> for Dst
 {
     fn copy(dst: &mut Self::Prototype, src: &<Src as DTypeImpl<CPU>>::Prototype) {
-        let src = Src::cast(&Src::broadcast_to(src, &dst.shape()).expect(&format!(
+        let src = Dst::broadcast_to(&Src::cast(src), &dst.shape()).expect(&format!(
             "Src with shape {:?} cannot broadcast to shape {:?} of dst.",
             src.shape(),
             dst.shape()
-        )));
+        ));
 
         unsafe {
             interface::cpu_tensor_copy(dst.into_interface(), src.into_interface());

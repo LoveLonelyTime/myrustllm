@@ -46,9 +46,6 @@ impl DTypeOf for I64 {
     const DTYPE: DType = DTYPE_I64;
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Any;
-
 /// Trait `DTypeImpl` associate a pair (Impl, Generic param type) with a tensor prototype.
 pub trait DTypeImpl<I: Impl> {
     type Prototype: TensorPrototype<I>;

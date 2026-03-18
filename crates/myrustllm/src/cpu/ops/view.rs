@@ -1,11 +1,6 @@
-use crate::{
-    common::{
-        DTypeImpl, Shape,
-        ops::view::{TensorBroadcast, TensorIndex, TensorSlice, TensorView},
-        tensor::TensorPrototype,
-    },
-    cpu::impls::{CPU, CPUTensorPrototype},
-};
+use crate::common::ops::view::{TensorBroadcast, TensorIndex, TensorSlice, TensorView};
+use crate::common::{DTypeImpl, Shape, TensorPrototype};
+use crate::cpu::impls::{CPU, CPUTensorPrototype};
 
 impl<T: DTypeImpl<CPU, Prototype = CPUTensorPrototype<U>>, U> TensorView<CPU> for T
 where
@@ -328,7 +323,7 @@ where
             src.data(),
             &new_shape_v.into(),
             &new_stride_v.into(),
-            src.offset(),
+            new_offset,
         )
     }
 }

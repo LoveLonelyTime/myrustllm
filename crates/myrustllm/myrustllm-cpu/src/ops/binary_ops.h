@@ -29,7 +29,7 @@ void tensor_binary_op_impl(CPUTensor &out, CPUTensor &lhs, CPUTensor &rhs, Op op
             size_t out_offset = tensor_idx2offset(out, out_idx);
 
             T lhs_data = tensor_data<T>(lhs)[lhs_offset];
-            T rhs_data = tensor_data<T>(rhs)[lhs_offset];
+            T rhs_data = tensor_data<T>(rhs)[rhs_offset];
             T *out_data = &tensor_data<T>(out)[out_offset];
 
             *out_data = op(lhs_data, rhs_data);

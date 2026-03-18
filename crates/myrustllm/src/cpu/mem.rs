@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::ops::Deref;
 use std::rc::Rc;
 
 /// Tensor's representation in CPU memory.
@@ -40,11 +41,29 @@ impl<T> Drop for CPUMemory<T> {
     }
 }
 
-impl<T> From<CPUMemory<T>> for SharedCPUMemory<T> {
-    fn from(value: CPUMemory<T>) -> Self {
-        Rc::new(RefCell::new(value))
+impl<T> Deref for CPUMemory<T> {
+    type Target = [T];
+    
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.size) }
+    }
+}
+
+impl<I: IntoIterator> From<I> for CPUMemory<I::Item> {
+    fn from(value: I) -> Self {
+        let data: Vec<I::Item> = value.into_iter().collect();
+        let mut mem = CPUMemory::new(data.len());
+        unsafe {
+            std::ptr::copy_nonoverlapping(data.as_ptr(), mem.as_mut_ptr(), data.len());
+        };
+        mem
     }
 }
 
 pub type SharedCPUMemory<T> = Rc<RefCell<CPUMemory<T>>>;
 
+impl<T> From<CPUMemory<T>> for SharedCPUMemory<T> {
+    fn from(value: CPUMemory<T>) -> Self {
+        Rc::new(RefCell::new(value))
+    }
+}

@@ -1,7 +1,6 @@
 pub mod dtype;
 pub mod impls;
 pub mod init;
-pub mod io;
 pub mod ops;
 pub mod shape;
 pub mod tensor;

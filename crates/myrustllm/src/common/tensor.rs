@@ -5,6 +5,7 @@ use crate::cpu::impls::CPU;
 /// Tensor is the basic data type in MyRustLLM.
 ///
 /// A Tensor is implemented by a pair(Impl, DTypeImpl<Impl>), where `Impl` is the backend implementation and `DTypeImpl<Impl>` is the data type of the tensor.
+#[derive(Debug)]
 pub struct Tensor<I: Impl = CPU, TI: DTypeImpl<I> = F32> {
     pub prototype: TI::Prototype,
 }
@@ -64,5 +65,22 @@ pub trait TensorPrototype<I: Impl> {
     }
 }
 
-// TODO: TensorMeta
-pub type TensorMeta<I: Impl> = (Shape, DType, I::Device);
+impl<I: Impl, TI: DTypeImpl<I, Prototype: std::fmt::Display>> std::fmt::Display for Tensor<I, TI>
+where
+    I::Device: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Tensor({}, shape={:?}, impl={}/{}, device={:?})",
+            self.prototype,
+            self.shape(),
+            std::any::type_name::<I>(),
+            std::any::type_name::<TI>(),
+            self.device()
+        )
+    }
+}
+
+/// Tensor metadata is a tuple of (Shape, DType, Device).
+pub type TensorMetadata<I> = (Shape, DType, <I as Impl>::Device);

@@ -2,11 +2,11 @@
 //!
 //! List:
 //! - TensorAllocInit: alloc
+//! - TensorFillInit: fill
 //! - TensorZerosInit: zeros
 //! - TensorOnesInit: ones
-//! - TensorRawDataInit: from_raw.
+//! - TensorLiterialInit: from_literal
 
-use crate::common::io::{Literal, TensorRawData};
 use crate::common::{DTypeImpl, Impl, Shape, Tensor};
 
 /// Tensor alloc init implementation.
@@ -20,6 +20,21 @@ impl<I: Impl, TI: DTypeImpl<I> + TensorAllocInit<I>> Tensor<I, TI> {
     /// Alloc just allocates a memory for a tensor, which may contain dirty data.
     pub fn alloc(shape: &Shape, device: &I::Device) -> Self {
         Tensor::new(TI::init(shape, device))
+    }
+}
+
+/// Tensor fill init implementation.
+pub trait TensorFillInit<I: Impl, T>: DTypeImpl<I> {
+    fn init(value: T, shape: &Shape, device: &I::Device) -> Self::Prototype;
+}
+
+impl<I: Impl, TI: DTypeImpl<I>> Tensor<I, TI> {
+    /// Create and fill a tensor with the given value.
+    pub fn fill<T>(value: T, shape: &Shape, device: &I::Device) -> Self
+    where
+        TI: TensorFillInit<I, T>,
+    {
+        Tensor::new(TI::init(value, shape, device))
     }
 }
 
@@ -47,19 +62,64 @@ impl<I: Impl, TI: DTypeImpl<I> + TensorOnesInit<I>> Tensor<I, TI> {
     }
 }
 
-/// Tensor raw data init implementation.
-pub trait TensorRawDataInit<I: Impl>: DTypeImpl<I> {
-    fn init(data: impl Into<TensorRawData>, device: &I::Device) -> Self::Prototype;
+/// Rust scalars and rust arrays with scalars can be considered as a literal.
+pub trait Literal {
+    type Type;
+    fn shape(&self) -> Shape;
+    fn data(&self) -> Vec<Self::Type>;
 }
 
-impl<I: Impl, TI: DTypeImpl<I> + TensorRawDataInit<I>> Tensor<I, TI> {
-    /// Create a tensor from raw data.
-    pub fn from_raw(data: impl Into<TensorRawData>, device: &I::Device) -> Self {
-        Tensor::new(TI::init(data, device))
+macro_rules! impl_literal_scalar {
+    ($($t:ty),*) => {
+        $(
+            impl Literal for $t {
+                type Type = $t;
+
+                fn shape(&self) -> Shape {
+                    Shape::scalar()
+                }
+
+                fn data(&self) -> Vec<Self::Type> {
+                    vec![*self]
+                }
+            }
+        )*
+    };
+}
+
+impl_literal_scalar!(f32, f64, i32, i64);
+
+impl<T: Literal, const N: usize> Literal for [T; N] {
+    type Type = T::Type;
+
+    fn shape(&self) -> Shape {
+        assert!(N > 0, "Empty literal isn't supported.");
+        let mut shape_v = vec![N];
+        shape_v.extend(self[0].shape().iter());
+        Shape::from(shape_v)
     }
 
-    /// Create a tensor from literal.
-    pub fn from_literal(literal: impl Literal, device: &I::Device) -> Self {
-        Self::from_raw(literal, device)
+    fn data(&self) -> Vec<Self::Type> {
+        assert!(N > 0, "Empty literal isn't supported.");
+        let mut vec = Vec::new();
+        for item in self {
+            vec.extend(item.data());
+        }
+        vec
+    }
+}
+
+// Tensor literal init implementation.
+pub trait TensorLiteralInit<I: Impl, U>: DTypeImpl<I> {
+    fn init(literal: impl Literal<Type = U>, device: &I::Device) -> Self::Prototype;
+}
+
+impl<I: Impl, TI: DTypeImpl<I>> Tensor<I, TI> {
+    /// Create and fill a tensor with the given value.
+    pub fn from_literal<T>(literal: impl Literal<Type = T>, device: &I::Device) -> Self
+    where
+        TI: TensorLiteralInit<I, T>,
+    {
+        Tensor::new(TI::init(literal, device))
     }
 }
