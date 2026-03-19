@@ -1,4 +1,6 @@
-use crate::common::ops::view::{TensorBroadcast, TensorIndex, TensorSlice, TensorView};
+use crate::common::ops::view::{
+    TensorBroadcast, TensorIndex, TensorPermute, TensorSlice, TensorView,
+};
 use crate::common::{DTypeImpl, Shape, TensorPrototype};
 use crate::cpu::impls::{CPU, CPUTensorPrototype};
 
@@ -362,5 +364,47 @@ where
             &new_stride_v.into(),
             src.offset(),
         ))
+    }
+}
+
+impl<T: DTypeImpl<CPU, Prototype = CPUTensorPrototype<U>>, U> TensorPermute<CPU> for T
+where
+    CPUTensorPrototype<U>: TensorPrototype<CPU>,
+{
+    fn permute(src: &Self::Prototype, permut: &[usize]) -> Self::Prototype {
+        // Check
+        assert!(
+            permut.len() == src.dims(),
+            "The size of dims must be {}, but got {}.",
+            src.dims(),
+            permut.len()
+        );
+
+        let mut checklist = vec![false; src.dims()];
+        for &i in permut {
+            assert!(
+                i < src.dims(),
+                "Index {} is out of bounds of the dimensions with size {}.",
+                i,
+                src.dims()
+            );
+            checklist[i] = true;
+        }
+        assert!(checklist.iter().all(|&x| x), "Invalid dims: {:?}.", permut);
+
+        // Permute
+        let mut new_shape_v = vec![0; src.dims()];
+        let mut new_stride_v = vec![0; src.dims()];
+        for (new_i, &i) in permut.iter().enumerate() {
+            new_shape_v[new_i] = src.shape()[i];
+            new_stride_v[new_i] = src.stride()[i];
+        }
+
+        Self::Prototype::new(
+            src.data(),
+            &new_shape_v.into(),
+            &new_stride_v.into(),
+            src.offset(),
+        )
     }
 }

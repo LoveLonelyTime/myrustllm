@@ -6,6 +6,7 @@
 //! - TensorView: view
 //! - TensorSlice: slice
 //! - TensorBroadcast: broadcast_to
+//! - TensorPermute: permute
 
 use crate::common::shape::broadcast_shape;
 use crate::common::{DTypeImpl, Impl, Shape, Tensor, TensorPrototype};
@@ -219,4 +220,18 @@ pub fn broadcast<
 ) -> Option<(Tensor<I, Lhs>, Tensor<I, Rhs>)> {
     let (lhs, rhs) = broadcast_prot::<I, Lhs, Rhs>(&lhs.prototype, &rhs.prototype)?;
     Some((Tensor::new(lhs), Tensor::new(rhs)))
+}
+
+/// Tensor permute implementation.
+pub trait TensorPermute<I: Impl>: DTypeImpl<I> {
+    fn permute(src: &Self::Prototype, permut: &[usize]) -> Self::Prototype;
+}
+
+impl<I: Impl, Src: DTypeImpl<I> + TensorPermute<I>> Tensor<I, Src> {
+    /// Permute the dimensions of `&self` according to `permut`.
+    ///
+    /// The returned CPU tensor will share the same memory with `&self`.
+    pub fn permute(&self, permut: &[usize]) -> Self {
+        Tensor::new(Src::permute(&self.prototype, permut))
+    }
 }

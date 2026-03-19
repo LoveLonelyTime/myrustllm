@@ -10,6 +10,14 @@ pub struct Tensor<I: Impl = CPU, TI: DTypeImpl<I> = F32> {
     pub prototype: TI::Prototype,
 }
 
+impl<I: Impl, TI: DTypeImpl<I, Prototype: Clone>> Clone for Tensor<I, TI> {
+    fn clone(&self) -> Self {
+        Self {
+            prototype: self.prototype.clone(),
+        }
+    }
+}
+
 impl<I: Impl, TI: DTypeImpl<I>> Tensor<I, TI> {
     /// Create a tensor from a prototype.
     ///

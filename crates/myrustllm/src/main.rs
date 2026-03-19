@@ -1,15 +1,17 @@
 use myrustllm::{
-    common::{
-        Shape, Tensor,
-        dtype::{F32, F64, I32},
-        ops::cast::TensorCast,
-    },
+    autograd::impls::Autograd,
+    common::{Shape, Tensor, dtype::F32},
     cpu::impls::CPU,
 };
 
 fn main() {
-    let t = Tensor::<CPU, F32>::ones(&Shape::from([500]), &());
-    let t2 = Tensor::<CPU, F32>::from_literal([32f32], &());
-
-    println!("t: {}", &t / &t2);
+    // let t = Tensor::<Autograd<CPU, F32>, F32>::fill(1.0, &Shape::from([500, 500]), &());
+    let mut t2 = Tensor::<Autograd<CPU, F32>, F32>::ones(&Shape::from([500, 500]), &());
+    t2.prototype.catch_grad();
+    let t = Tensor::<Autograd<CPU, F32>, F32>::ones(&Shape::from([500, 500]), &());
+    let init = Tensor::<Autograd<CPU, F32>, F32>::ones(&Shape::from([500, 500]), &());
+    (&t + &t2).backward(&init, false);
+    let k = t2.prototype.grad();
+    let p = k.grad().unwrap();
+    println!("{}", p.prototype.tensor())
 }
